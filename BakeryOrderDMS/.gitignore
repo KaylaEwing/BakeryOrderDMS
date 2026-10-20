@@ -1,0 +1,11 @@
+# Build output
+out/
+*.class
+
+# IntelliJ personal settings
+.idea/workspace.xml
+.idea/shelf/
+
+# OS files
+.DS_Store
+Thumbs.db

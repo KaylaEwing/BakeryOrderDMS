@@ -1,0 +1,8 @@
+<component name="ArtifactManager">
+  <artifact type="jar" name="BakeryOrderDMS:jar">
+    <output-path>$PROJECT_DIR$/out/artifacts/BakeryOrderDMS_jar</output-path>
+    <root id="archive" name="BakeryOrderDMS.jar">
+      <element id="module-output" name="BakeryOrderDMS" />
+    </root>
+  </artifact>
+</component>

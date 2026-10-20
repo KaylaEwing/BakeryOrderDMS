@@ -1,0 +1,12 @@
+# Demo file for showing input validation: 2 good orders and 8 bad lines.
+# Load it AFTER orders.txt. Each bad line is skipped with a message saying why.
+1101,Grace Lee,407-555-0201,Vanilla,2,22.00,2027-01-20,false,Sprinkles on top
+1102,Omar Said,407-555-0202,Carrot,1,24.00,2027-01-21,false,
+abc,Bad Id,407-555-0203,Vanilla,1,22.00,2027-01-22,false,
+1104,Zero Cakes,407-555-0204,Chocolate,0,25.00,2027-01-22,false,
+1105,Old Date,407-555-0205,Vanilla,1,22.00,2020-01-01,false,
+1106,Lemon Lover,407-555-0206,Lemon,1,20.00,2027-01-23,false,
+1107,Short Phone,555-0207,Vanilla,1,22.00,2027-01-23,false,
+1001,Duplicate Id,407-555-0208,Vanilla,1,22.00,2027-01-24,false,
+1108,Missing Fields,407-555-0209,Vanilla
+1109,Bad Date,407-555-0210,Vanilla,1,22.00,2027-02-30,false,

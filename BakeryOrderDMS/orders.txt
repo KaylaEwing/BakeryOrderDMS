@@ -1,0 +1,28 @@
+# Bakery Order Management System - sample orders (25 orders)
+# Format: orderId,customerName,phoneNumber,cakeType,quantity,unitPrice,pickupDate,pickedUp,specialInstructions
+# Lines starting with # are comments and are ignored. Instructions may be left blank.
+1001,Mia Chen,407-555-0101,Chocolate,2,25.00,2027-02-13,false,Write Happy Valentine's Day in red icing
+1002,Jin Park,407-555-0102,Vanilla,1,22.00,2027-02-13,false,
+1003,Ana Ruiz,321-555-0103,Red Velvet,3,28.00,2027-02-13,false,Heart shaped, nut-free
+1004,Leo Grant,407-555-0142,Chocolate,1,25.00,2027-02-13,false,Add pink sprinkles
+1005,Priya Shah,689-555-0105,Carrot,2,24.00,2027-02-13,true,Cream cheese frosting only
+1006,Marcus Bell,407-555-0106,Red Velvet,1,28.00,2027-02-14,false,Write Be Mine
+1007,Sofia Alvarez,321-555-0107,Vanilla,4,22.00,2027-01-08,false,Birthday party for 40 guests
+1008,Daniel O'Brien,407-555-0108,Chocolate,1,25.00,2027-01-09,false,
+1009,Grace Kim,689-555-0109,Carrot,1,24.00,2027-01-15,false,No walnuts - allergy
+1010,Omar Haddad,407-555-0110,Red Velvet,2,28.00,2027-01-15,false,Gold leaf on top
+1011,Emily Johnson,321-555-0111,Vanilla,3,22.00,2027-01-22,false,Blue and white for a baby shower
+1012,Tyrone Williams,407-555-0112,Chocolate,5,25.00,2027-01-29,false,Office retirement party
+1013,Hannah Lee,689-555-0113,Vanilla,1,22.00,2027-02-05,false,Gluten-free if possible
+1014,Carlos Mendez,407-555-0114,Carrot,2,24.00,2027-02-05,false,
+1015,Aisha Patel,321-555-0115,Chocolate,2,25.00,2027-02-12,false,Write Congrats Aisha
+1016,Ben Carter,407-555-0116,Red Velvet,1,28.00,2027-02-19,false,
+1017,Chloe Nguyen,689-555-0117,Vanilla,2,22.00,2027-02-26,false,Lavender buttercream
+1018,Isaac Rivera,407-555-0118,Chocolate,3,25.00,2027-03-05,false,Soccer team celebration
+1019,Julia Rossi,321-555-0119,Carrot,1,24.00,2027-03-12,false,
+1020,Kevin Brooks,407-555-0120,Red Velvet,2,28.00,2027-03-14,false,Pi Day theme
+1021,Lauren Scott,689-555-0121,Vanilla,1,22.00,2027-03-17,false,Green sprinkles for St. Patrick's Day
+1022,Mohammed Ali,407-555-0122,Chocolate,2,25.00,2027-03-20,false,
+1023,Natalie Brown,321-555-0123,Carrot,3,24.00,2027-03-27,false,Easter bunny decorations
+1024,Oscar Diaz,407-555-0124,Red Velvet,1,28.00,2027-04-03,false,Write Happy 30th Oscar
+1025,Rachel Green,689-555-0125,Vanilla,2,22.00,2027-04-10,false,Rainbow layers inside

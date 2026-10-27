@@ -1,0 +1,191 @@
+<html>
+<head>
+<title>DailyReport.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #8c8c8c; font-style: italic;}
+.s4 { color: #1750eb;}
+.s5 { color: #067d17;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+DailyReport.java</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Name:    Kayla Ewing 
+ * Course:  CEN 3024C - Software Development I 
+ * Date:    October 19, 2026 
+ * Class:   DailyReport 
+ * 
+ * Purpose: Holds the result of the custom action, the Daily Production 
+ *          Report. For one pickup date it stores how many cakes of each type 
+ *          must be baked, how many orders are due, and the expected revenue 
+ *          (subtotal + sales tax). The numbers are calculated by 
+ *          OrderManager.generateDailyReport(); this class only stores and 
+ *          formats them. It has no setters, so a report can never be changed 
+ *          after it is created. 
+ */</span>
+<span class="s2">package </span><span class="s1">bakerydms;</span>
+
+<span class="s2">import </span><span class="s1">java.time.LocalDate;</span>
+<span class="s2">import </span><span class="s1">java.time.format.TextStyle;</span>
+<span class="s2">import </span><span class="s1">java.util.Collections;</span>
+<span class="s2">import </span><span class="s1">java.util.LinkedHashMap;</span>
+<span class="s2">import </span><span class="s1">java.util.Locale;</span>
+<span class="s2">import </span><span class="s1">java.util.Map;</span>
+
+<span class="s0">/**</span>
+ <span class="s0">* The calculated result of the Daily Production Report.</span>
+ <span class="s0">*/</span>
+<span class="s2">public class </span><span class="s1">DailyReport {</span>
+
+    <span class="s0">/** The pickup date the report covers. */</span>
+    <span class="s2">private final </span><span class="s1">LocalDate reportDate;</span>
+
+    <span class="s0">/** Number of cakes to bake for each cake type, in menu order. */</span>
+    <span class="s2">private final </span><span class="s1">Map&lt;String, Integer&gt; cakeCounts;</span>
+
+    <span class="s0">/** Number of open (not picked up) orders due on the report date. */</span>
+    <span class="s2">private final int </span><span class="s1">orderCount;</span>
+
+    <span class="s0">/** Total cost of those orders before tax. */</span>
+    <span class="s2">private final double </span><span class="s1">subtotal;</span>
+
+    <span class="s0">/** Sales tax on the subtotal. */</span>
+    <span class="s2">private final double </span><span class="s1">tax;</span>
+
+    <span class="s0">/** Subtotal plus tax: the money the bakery expects to take in that day. */</span>
+    <span class="s2">private final double </span><span class="s1">expectedRevenue;</span>
+
+    <span class="s0">/** Sales tax rate used, e.g. 0.07 for 7%. */</span>
+    <span class="s2">private final double </span><span class="s1">taxRate;</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates a finished report.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">reportDate      the pickup date the report covers</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">cakeCounts      cakes to bake for each cake type</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">orderCount      number of open orders due that day</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">subtotal        total before tax</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">tax             sales tax amount</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">expectedRevenue subtotal plus tax</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">taxRate         the tax rate used (0.07 = 7%)</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">DailyReport(LocalDate reportDate, Map&lt;String, Integer&gt; cakeCounts, </span><span class="s2">int </span><span class="s1">orderCount,</span>
+                       <span class="s2">double </span><span class="s1">subtotal, </span><span class="s2">double </span><span class="s1">tax, </span><span class="s2">double </span><span class="s1">expectedRevenue, </span><span class="s2">double </span><span class="s1">taxRate) {</span>
+        <span class="s2">this</span><span class="s1">.reportDate = reportDate;</span>
+        <span class="s0">// Copy the map so later changes to the original cannot change this report.</span>
+        <span class="s2">this</span><span class="s1">.cakeCounts = Collections.unmodifiableMap(</span><span class="s2">new </span><span class="s1">LinkedHashMap&lt;&gt;(cakeCounts));</span>
+        <span class="s2">this</span><span class="s1">.orderCount = orderCount;</span>
+        <span class="s2">this</span><span class="s1">.subtotal = subtotal;</span>
+        <span class="s2">this</span><span class="s1">.tax = tax;</span>
+        <span class="s2">this</span><span class="s1">.expectedRevenue = expectedRevenue;</span>
+        <span class="s2">this</span><span class="s1">.taxRate = taxRate;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the pickup date the report covers */</span>
+    <span class="s2">public </span><span class="s1">LocalDate getReportDate() {</span>
+        <span class="s2">return </span><span class="s1">reportDate;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">a read-only map of cake type to number of cakes */</span>
+    <span class="s2">public </span><span class="s1">Map&lt;String, Integer&gt; getCakeCounts() {</span>
+        <span class="s2">return </span><span class="s1">cakeCounts;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the number of open orders due on the report date */</span>
+    <span class="s2">public int </span><span class="s1">getOrderCount() {</span>
+        <span class="s2">return </span><span class="s1">orderCount;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the total before tax */</span>
+    <span class="s2">public double </span><span class="s1">getSubtotal() {</span>
+        <span class="s2">return </span><span class="s1">subtotal;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the sales tax amount */</span>
+    <span class="s2">public double </span><span class="s1">getTax() {</span>
+        <span class="s2">return </span><span class="s1">tax;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the subtotal plus tax */</span>
+    <span class="s2">public double </span><span class="s1">getExpectedRevenue() {</span>
+        <span class="s2">return </span><span class="s1">expectedRevenue;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Adds up the cakes of every type.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">the total number of cakes to bake</span>
+     <span class="s0">*/</span>
+    <span class="s2">public int </span><span class="s1">getTotalCakes() {</span>
+        <span class="s2">int </span><span class="s1">total = </span><span class="s4">0</span><span class="s1">;</span>
+        <span class="s2">for </span><span class="s1">(</span><span class="s2">int </span><span class="s1">count : cakeCounts.values()) {</span>
+            <span class="s1">total += count;</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">total;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">true if at least one open order is due on the report date</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">hasOrders() {</span>
+        <span class="s2">return </span><span class="s1">orderCount &gt; </span><span class="s4">0</span><span class="s1">;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Builds the printable report shown to the user.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">the report as multi-line text</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String format() {</span>
+        <span class="s1">String dayName = reportDate.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.US);</span>
+        <span class="s1">StringBuilder sb = </span><span class="s2">new </span><span class="s1">StringBuilder();</span>
+        <span class="s1">String line = </span><span class="s5">&quot;=&quot;</span><span class="s1">.repeat(</span><span class="s4">46</span><span class="s1">);</span>
+        <span class="s1">sb.append(line).append(System.lineSeparator());</span>
+        <span class="s1">sb.append(</span><span class="s5">&quot;          DAILY PRODUCTION REPORT&quot;</span><span class="s1">).append(System.lineSeparator());</span>
+        <span class="s1">sb.append(line).append(System.lineSeparator());</span>
+        <span class="s1">sb.append(String.format(</span><span class="s5">&quot;Pickup date: %s (%s)%n&quot;</span><span class="s1">, reportDate, dayName));</span>
+
+        <span class="s0">// Nothing due: say so clearly instead of printing a table of zeros.</span>
+        <span class="s2">if </span><span class="s1">(!hasOrders()) {</span>
+            <span class="s1">sb.append(</span><span class="s5">&quot;No open orders are due on this date. Nothing to bake.&quot;</span><span class="s1">).append(System.lineSeparator());</span>
+            <span class="s1">sb.append(line);</span>
+            <span class="s2">return </span><span class="s1">sb.toString();</span>
+        <span class="s1">}</span>
+
+        <span class="s1">sb.append(String.format(</span><span class="s5">&quot;Open orders due: %d%n%n&quot;</span><span class="s1">, orderCount));</span>
+        <span class="s1">sb.append(</span><span class="s5">&quot;Cakes to bake:&quot;</span><span class="s1">).append(System.lineSeparator());</span>
+        <span class="s2">for </span><span class="s1">(Map.Entry&lt;String, Integer&gt; entry : cakeCounts.entrySet()) {</span>
+            <span class="s1">sb.append(String.format(</span><span class="s5">&quot;   %-14s %4d%n&quot;</span><span class="s1">, entry.getKey(), entry.getValue()));</span>
+        <span class="s1">}</span>
+        <span class="s1">sb.append(</span><span class="s5">&quot;   &quot;</span><span class="s1">).append(</span><span class="s5">&quot;-&quot;</span><span class="s1">.repeat(</span><span class="s4">19</span><span class="s1">)).append(System.lineSeparator());</span>
+        <span class="s1">sb.append(String.format(</span><span class="s5">&quot;   %-14s %4d%n%n&quot;</span><span class="s1">, </span><span class="s5">&quot;Total cakes&quot;</span><span class="s1">, getTotalCakes()));</span>
+        <span class="s0">// Labels are padded to the same width so the dollar amounts line up.</span>
+        <span class="s1">String taxLabel = String.format(</span><span class="s5">&quot;Sales tax (%.0f%%):&quot;</span><span class="s1">, taxRate * </span><span class="s4">100</span><span class="s1">);</span>
+        <span class="s1">sb.append(String.format(</span><span class="s5">&quot;%-20s %11s%n&quot;</span><span class="s1">, </span><span class="s5">&quot;Subtotal:&quot;</span><span class="s1">, money(subtotal)));</span>
+        <span class="s1">sb.append(String.format(</span><span class="s5">&quot;%-20s %11s%n&quot;</span><span class="s1">, taxLabel, money(tax)));</span>
+        <span class="s1">sb.append(String.format(</span><span class="s5">&quot;%-20s %11s%n&quot;</span><span class="s1">, </span><span class="s5">&quot;Expected revenue:&quot;</span><span class="s1">, money(expectedRevenue)));</span>
+        <span class="s1">sb.append(line);</span>
+        <span class="s2">return </span><span class="s1">sb.toString();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Formats an amount as dollars, e.g. 1234.5 becomes &quot;$1,234.50&quot;.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">amount the amount in dollars</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">the amount as text with a dollar sign</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String money(</span><span class="s2">double </span><span class="s1">amount) {</span>
+        <span class="s2">return </span><span class="s1">String.format(</span><span class="s5">&quot;$%,.2f&quot;</span><span class="s1">, amount);</span>
+    <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

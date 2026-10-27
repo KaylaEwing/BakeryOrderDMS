@@ -1,0 +1,45 @@
+<html>
+<head>
+<title>InputCancelledException.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #067d17;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+InputCancelledException.java</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Name:    Kayla Ewing 
+ * Course:  CEN 3024C - Software Development I 
+ * Date:    October 19, 2026 
+ * Class:   InputCancelledException 
+ * 
+ * Purpose: Signals that the user typed &quot;cancel&quot; in the middle of adding, 
+ *          updating or removing an order. BakeryApp catches it and returns 
+ *          to the main menu without changing any data. 
+ */</span>
+<span class="s2">package </span><span class="s1">bakerydms;</span>
+
+<span class="s0">/**</span>
+ <span class="s0">* Thrown when the user types &quot;cancel&quot; at a prompt.</span>
+ <span class="s0">*/</span>
+<span class="s1">@SuppressWarnings(</span><span class="s3">&quot;serial&quot;</span><span class="s1">) </span><span class="s0">// never serialized, so no version ID is needed</span>
+<span class="s2">public class </span><span class="s1">InputCancelledException </span><span class="s2">extends </span><span class="s1">RuntimeException {</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates the exception with a standard message.</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">InputCancelledException() {</span>
+        <span class="s2">super</span><span class="s1">(</span><span class="s3">&quot;The user cancelled.&quot;</span><span class="s1">);</span>
+    <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

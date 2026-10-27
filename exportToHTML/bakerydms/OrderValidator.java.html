@@ -1,0 +1,358 @@
+<html>
+<head>
+<title>OrderValidator.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #1750eb;}
+.s4 { color: #067d17;}
+.s5 { color: #8c8c8c; font-style: italic;}
+.s6 { color: #0037a6;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+OrderValidator.java</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Name:    Kayla Ewing 
+ * Course:  CEN 3024C - Software Development I 
+ * Date:    October 19, 2026 
+ * Class:   OrderValidator 
+ * 
+ * Purpose: Holds every data rule for an Order in one place. Both the file 
+ *          loader and the manual entry screens use these same rules, so bad 
+ *          data can never get into the system no matter how it is entered. 
+ * 
+ *          Rules: 
+ *            - Order ID: whole number from 1000 to 9999, unique 
+ *            - Customer name: 2-30 letters, spaces, apostrophes, hyphens, periods 
+ *            - Phone: exactly 10 digits (dashes, spaces and parentheses allowed) 
+ *            - Cake type: Chocolate, Vanilla, Red Velvet or Carrot 
+ *            - Quantity: 1 to 50 
+ *            - Unit price: more than $0.00, at most $1000.00, max 2 decimals 
+ *            - Pickup date: a real date from today up to 2 years ahead 
+ *            - Special instructions: optional, 100 characters or fewer 
+ */</span>
+<span class="s2">package </span><span class="s1">bakerydms;</span>
+
+<span class="s2">import </span><span class="s1">java.math.BigDecimal;</span>
+<span class="s2">import </span><span class="s1">java.time.LocalDate;</span>
+<span class="s2">import </span><span class="s1">java.time.format.DateTimeFormatter;</span>
+<span class="s2">import </span><span class="s1">java.time.format.DateTimeParseException;</span>
+<span class="s2">import </span><span class="s1">java.time.format.ResolverStyle;</span>
+<span class="s2">import </span><span class="s1">java.util.ArrayList;</span>
+<span class="s2">import </span><span class="s1">java.util.List;</span>
+<span class="s2">import </span><span class="s1">java.util.Optional;</span>
+
+<span class="s0">/**</span>
+ <span class="s0">* Checks and cleans up Order data.</span>
+ <span class="s0">*/</span>
+<span class="s2">public class </span><span class="s1">OrderValidator {</span>
+
+    <span class="s0">/** The cake types the bakery sells, in the order they are shown to the user. */</span>
+    <span class="s2">private final </span><span class="s1">List&lt;String&gt; validCakeTypes;</span>
+
+    <span class="s0">// Limits for each field. These are instance constants (not static) per course rules.</span>
+    <span class="s2">private final int </span><span class="s1">minOrderId = </span><span class="s3">1000</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">maxOrderId = </span><span class="s3">9999</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">minNameLength = </span><span class="s3">2</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">maxNameLength = </span><span class="s3">30</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">minQuantity = </span><span class="s3">1</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">maxQuantity = </span><span class="s3">50</span><span class="s1">;</span>
+    <span class="s2">private final double </span><span class="s1">maxPrice = </span><span class="s3">1000.00</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">maxInstructionsLength = </span><span class="s3">100</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">maxYearsAhead = </span><span class="s3">2</span><span class="s1">;</span>
+
+    <span class="s0">/** Accepts dates like 2027-02-13. STRICT rejects impossible dates such as 2027-02-30. */</span>
+    <span class="s2">private final </span><span class="s1">DateTimeFormatter isoFormat =</span>
+            <span class="s1">DateTimeFormatter.ofPattern(</span><span class="s4">&quot;uuuu-MM-dd&quot;</span><span class="s1">).withResolverStyle(ResolverStyle.STRICT);</span>
+
+    <span class="s0">/** Accepts dates like 2/13/2027 or 02/13/2027. */</span>
+    <span class="s2">private final </span><span class="s1">DateTimeFormatter usFormat =</span>
+            <span class="s1">DateTimeFormatter.ofPattern(</span><span class="s4">&quot;M/d/uuuu&quot;</span><span class="s1">).withResolverStyle(ResolverStyle.STRICT);</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates a validator for the given list of cake types.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">validCakeTypes the cake types the bakery sells (must not be empty)</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException if the list is null or empty</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">OrderValidator(List&lt;String&gt; validCakeTypes) {</span>
+        <span class="s2">if </span><span class="s1">(validCakeTypes == </span><span class="s2">null </span><span class="s1">|| validCakeTypes.isEmpty()) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;At least one cake type is required.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">this</span><span class="s1">.validCakeTypes = List.copyOf(validCakeTypes);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s5">@return </span><span class="s0">a read-only list of the cake types the bakery sells */</span>
+    <span class="s2">public </span><span class="s1">List&lt;String&gt; getValidCakeTypes() {</span>
+        <span class="s2">return </span><span class="s1">validCakeTypes;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Checks that an order ID is in the allowed 4-digit range.</span>
+     <span class="s0">* (Uniqueness is checked by OrderManager, which knows the stored orders.)</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">orderId the ID to check</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the ID is from 1000 to 9999</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidOrderId(</span><span class="s2">int </span><span class="s1">orderId) {</span>
+        <span class="s2">return </span><span class="s1">orderId &gt;= minOrderId &amp;&amp; orderId &lt;= maxOrderId;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Checks a customer name. It must start with a letter and contain only</span>
+     <span class="s0">* letters, spaces, apostrophes, hyphens or periods (e.g. &quot;Mary-Ann O'Neil Jr.&quot;).</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">name the name to check</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the name follows the rules</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidName(String name) {</span>
+        <span class="s2">if </span><span class="s1">(name == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return false</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s1">String trimmed = name.trim();</span>
+        <span class="s2">return </span><span class="s1">trimmed.length() &gt;= minNameLength</span>
+                <span class="s1">&amp;&amp; trimmed.length() &lt;= maxNameLength</span>
+                <span class="s1">&amp;&amp; trimmed.matches(</span><span class="s4">&quot;</span><span class="s6">\\</span><span class="s4">p{L}[</span><span class="s6">\\</span><span class="s4">p{L} .'-]*&quot;</span><span class="s1">);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Turns any reasonable phone number into the standard 407-555-0142 format.</span>
+     <span class="s0">* Spaces, dashes, dots, parentheses and a leading +1 are allowed in the input.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">rawPhone the phone number as typed</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the formatted number, or an empty Optional if it is not 10 digits</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Optional&lt;String&gt; formatPhone(String rawPhone) {</span>
+        <span class="s2">if </span><span class="s1">(rawPhone == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s1">Optional.empty();</span>
+        <span class="s1">}</span>
+        <span class="s0">// Remove the characters people normally type between digits.</span>
+        <span class="s1">String digits = rawPhone.replaceAll(</span><span class="s4">&quot;[</span><span class="s6">\\</span><span class="s4">s().+-]&quot;</span><span class="s1">, </span><span class="s4">&quot;&quot;</span><span class="s1">);</span>
+        <span class="s2">if </span><span class="s1">(!digits.matches(</span><span class="s4">&quot;</span><span class="s6">\\</span><span class="s4">d+&quot;</span><span class="s1">)) {</span>
+            <span class="s2">return </span><span class="s1">Optional.empty();</span>
+        <span class="s1">}</span>
+        <span class="s0">// Allow a U.S. country code in front, e.g. 1-407-555-0142.</span>
+        <span class="s2">if </span><span class="s1">(digits.length() == </span><span class="s3">11 </span><span class="s1">&amp;&amp; digits.startsWith(</span><span class="s4">&quot;1&quot;</span><span class="s1">)) {</span>
+            <span class="s1">digits = digits.substring(</span><span class="s3">1</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(digits.length() != </span><span class="s3">10</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s1">Optional.empty();</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">Optional.of(digits.substring(</span><span class="s3">0</span><span class="s1">, </span><span class="s3">3</span><span class="s1">) + </span><span class="s4">&quot;-&quot; </span><span class="s1">+ digits.substring(</span><span class="s3">3</span><span class="s1">, </span><span class="s3">6</span><span class="s1">) + </span><span class="s4">&quot;-&quot; </span><span class="s1">+ digits.substring(</span><span class="s3">6</span><span class="s1">));</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">phone the phone number to check</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the phone number contains exactly 10 digits</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidPhone(String phone) {</span>
+        <span class="s2">return </span><span class="s1">formatPhone(phone).isPresent();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Finds the official spelling of a cake type, ignoring upper/lower case and</span>
+     <span class="s0">* extra spaces (so &quot;red  VELVET&quot; becomes &quot;Red Velvet&quot;).</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">rawCakeType the cake type as typed</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the matching cake type, or an empty Optional if the bakery does not sell it</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Optional&lt;String&gt; matchCakeType(String rawCakeType) {</span>
+        <span class="s2">if </span><span class="s1">(rawCakeType == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s1">Optional.empty();</span>
+        <span class="s1">}</span>
+        <span class="s1">String cleaned = rawCakeType.trim().replaceAll(</span><span class="s4">&quot;</span><span class="s6">\\</span><span class="s4">s+&quot;</span><span class="s1">, </span><span class="s4">&quot; &quot;</span><span class="s1">);</span>
+        <span class="s2">for </span><span class="s1">(String type : validCakeTypes) {</span>
+            <span class="s2">if </span><span class="s1">(type.equalsIgnoreCase(cleaned)) {</span>
+                <span class="s2">return </span><span class="s1">Optional.of(type);</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">Optional.empty();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">cakeType the cake type to check</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the bakery sells this cake type</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidCakeType(String cakeType) {</span>
+        <span class="s2">return </span><span class="s1">matchCakeType(cakeType).isPresent();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">quantity the number of cakes</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the quantity is from 1 to 50</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidQuantity(</span><span class="s2">int </span><span class="s1">quantity) {</span>
+        <span class="s2">return </span><span class="s1">quantity &gt;= minQuantity &amp;&amp; quantity &lt;= maxQuantity;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Checks a unit price. It must be a real number (not NaN or Infinity),</span>
+     <span class="s0">* more than zero, at most $1000.00, with no more than 2 decimal places.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">price the price of one cake</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the price follows the rules</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidPrice(</span><span class="s2">double </span><span class="s1">price) {</span>
+        <span class="s2">if </span><span class="s1">(!Double.isFinite(price) || price &lt;= </span><span class="s3">0 </span><span class="s1">|| price &gt; maxPrice) {</span>
+            <span class="s2">return false</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s0">// stripTrailingZeros turns 28.50 into 28.5 so only real decimal places are counted.</span>
+        <span class="s2">return </span><span class="s1">BigDecimal.valueOf(price).stripTrailingZeros().scale() &lt;= </span><span class="s3">2</span><span class="s1">;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Checks that a pickup date is not too early and not more than 2 years ahead.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">date            the pickup date to check</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">earliestAllowed the earliest date accepted (normally today)</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">today           today's date, used to work out the 2-year limit</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the date is inside the allowed range</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidPickupDate(LocalDate date, LocalDate earliestAllowed, LocalDate today) {</span>
+        <span class="s2">return </span><span class="s1">date != </span><span class="s2">null</span>
+                <span class="s1">&amp;&amp; !date.isBefore(earliestAllowed)</span>
+                <span class="s1">&amp;&amp; !date.isAfter(today.plusYears(maxYearsAhead));</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Checks special instructions. They are optional, but must be 100</span>
+     <span class="s0">* characters or fewer and contain no hidden control characters.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">instructions the instructions to check (null or blank means none)</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the instructions follow the rules</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isValidInstructions(String instructions) {</span>
+        <span class="s2">if </span><span class="s1">(instructions == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return true</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s1">String trimmed = instructions.trim();</span>
+        <span class="s2">return </span><span class="s1">trimmed.length() &lt;= maxInstructionsLength</span>
+                <span class="s1">&amp;&amp; trimmed.chars().noneMatch(Character::isISOControl);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Converts text into a date. Accepts YYYY-MM-DD (2027-02-13) or</span>
+     <span class="s0">* MM/DD/YYYY (2/13/2027). Impossible dates such as 2027-02-30 are rejected.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">rawDate the date as typed</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the date, or an empty Optional if the text is not a real date</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Optional&lt;LocalDate&gt; parseDate(String rawDate) {</span>
+        <span class="s2">if </span><span class="s1">(rawDate == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s1">Optional.empty();</span>
+        <span class="s1">}</span>
+        <span class="s1">String trimmed = rawDate.trim();</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s2">return </span><span class="s1">Optional.of(LocalDate.parse(trimmed, isoFormat));</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(DateTimeParseException isoProblem) {</span>
+            <span class="s0">// Not in YYYY-MM-DD form; try MM/DD/YYYY next.</span>
+            <span class="s2">try </span><span class="s1">{</span>
+                <span class="s2">return </span><span class="s1">Optional.of(LocalDate.parse(trimmed, usFormat));</span>
+            <span class="s1">} </span><span class="s2">catch </span><span class="s1">(DateTimeParseException usProblem) {</span>
+                <span class="s2">return </span><span class="s1">Optional.empty();</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Returns a cleaned-up copy of an order: extra spaces removed, the phone</span>
+     <span class="s0">* number put in 407-555-0142 form and the cake type spelled correctly.</span>
+     <span class="s0">* Fields that are invalid are left as they are so validate() can report them.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">order the order to clean up</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">a new, cleaned-up Order (the original is not changed)</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Order normalize(Order order) {</span>
+        <span class="s1">Order cleaned = order.copy();</span>
+        <span class="s2">if </span><span class="s1">(cleaned.getCustomerName() != </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s1">cleaned.setCustomerName(cleaned.getCustomerName().trim().replaceAll(</span><span class="s4">&quot;</span><span class="s6">\\</span><span class="s4">s+&quot;</span><span class="s1">, </span><span class="s4">&quot; &quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s1">formatPhone(cleaned.getPhoneNumber()).ifPresent(cleaned::setPhoneNumber);</span>
+        <span class="s1">matchCakeType(cleaned.getCakeType()).ifPresent(cleaned::setCakeType);</span>
+        <span class="s1">cleaned.setSpecialInstructions(cleaned.getSpecialInstructions().trim());</span>
+        <span class="s2">return </span><span class="s1">cleaned;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Runs every rule against an order and collects a message for each problem.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">order           the order to check</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">earliestAllowed the earliest pickup date accepted</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">today           today's date</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">a list of problems; an empty list means the order is valid</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">List&lt;String&gt; validate(Order order, LocalDate earliestAllowed, LocalDate today) {</span>
+        <span class="s1">List&lt;String&gt; errors = </span><span class="s2">new </span><span class="s1">ArrayList&lt;&gt;();</span>
+        <span class="s2">if </span><span class="s1">(order == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s1">errors.add(</span><span class="s4">&quot;No order was provided.&quot;</span><span class="s1">);</span>
+            <span class="s2">return </span><span class="s1">errors;</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidOrderId(order.getOrderId())) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;orderId&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidName(order.getCustomerName())) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;name&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidPhone(order.getPhoneNumber())) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;phone&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidCakeType(order.getCakeType())) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;cakeType&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidQuantity(order.getQuantity())) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;quantity&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidPrice(order.getUnitPrice())) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;price&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidPickupDate(order.getPickupDate(), earliestAllowed, today)) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;date&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!isValidInstructions(order.getSpecialInstructions())) {</span>
+            <span class="s1">errors.add(ruleFor(</span><span class="s4">&quot;instructions&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">errors;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Explains the rule for a field. Used for error messages so the user</span>
+     <span class="s0">* always knows how to fix what they typed.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">field the field name (orderId, name, phone, cakeType, quantity, price, date, instructions)</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">a plain-English description of the rule</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String ruleFor(String field) {</span>
+        <span class="s2">switch </span><span class="s1">(field) {</span>
+            <span class="s2">case </span><span class="s4">&quot;orderId&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Order ID must be a 4-digit number from &quot; </span><span class="s1">+ minOrderId + </span><span class="s4">&quot; to &quot; </span><span class="s1">+ maxOrderId + </span><span class="s4">&quot;.&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s4">&quot;name&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Customer name must be &quot; </span><span class="s1">+ minNameLength + </span><span class="s4">&quot;-&quot; </span><span class="s1">+ maxNameLength</span>
+                        <span class="s1">+ </span><span class="s4">&quot; characters, start with a letter, and use only letters, spaces, ' - or .&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s4">&quot;phone&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Phone number must have exactly 10 digits, e.g. 407-555-0142.&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s4">&quot;cakeType&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Cake type must be one of: &quot; </span><span class="s1">+ String.join(</span><span class="s4">&quot;, &quot;</span><span class="s1">, validCakeTypes) + </span><span class="s4">&quot;.&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s4">&quot;quantity&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Quantity must be a whole number from &quot; </span><span class="s1">+ minQuantity + </span><span class="s4">&quot; to &quot; </span><span class="s1">+ maxQuantity + </span><span class="s4">&quot;.&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s4">&quot;price&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">String.format(</span><span class="s4">&quot;Unit price must be more than $0.00 and at most $%.2f, with no more than 2 decimal places.&quot;</span><span class="s1">, maxPrice);</span>
+            <span class="s2">case </span><span class="s4">&quot;date&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Pickup date must be a real date from today up to &quot; </span><span class="s1">+ maxYearsAhead</span>
+                        <span class="s1">+ </span><span class="s4">&quot; years ahead (YYYY-MM-DD or MM/DD/YYYY).&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s4">&quot;instructions&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Special instructions must be &quot; </span><span class="s1">+ maxInstructionsLength + </span><span class="s4">&quot; characters or fewer.&quot;</span><span class="s1">;</span>
+            <span class="s2">default</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s4">&quot;Invalid value.&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

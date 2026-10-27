@@ -1,0 +1,320 @@
+<html>
+<head>
+<title>OrderFileLoader.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #1750eb;}
+.s4 { color: #067d17;}
+.s5 { color: #8c8c8c; font-style: italic;}
+.s6 { color: #0037a6;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+OrderFileLoader.java</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Name:    Kayla Ewing 
+ * Course:  CEN 3024C - Software Development I 
+ * Date:    October 19, 2026 
+ * Class:   OrderFileLoader 
+ * 
+ * Purpose: Reads orders from a text file (the &quot;batch&quot; way of creating data). 
+ *          It checks the file name, opens the file safely, and turns each line 
+ *          into an Order object. It only handles the file format; business 
+ *          rules such as &quot;quantity 1-50&quot; are checked later by OrderValidator. 
+ * 
+ *          File format: one order per line, 9 fields separated by commas: 
+ *            orderId,customerName,phoneNumber,cakeType,quantity,unitPrice,pickupDate,pickedUp,specialInstructions 
+ *          Example: 
+ *            1001,Mia Chen,407-555-0101,Chocolate,2,25.00,2027-02-13,false,Write Happy Birthday 
+ *          Blank lines and lines starting with # are ignored. The last field 
+ *          (special instructions) may be empty and may contain commas. 
+ */</span>
+<span class="s2">package </span><span class="s1">bakerydms;</span>
+
+<span class="s2">import </span><span class="s1">java.io.BufferedReader;</span>
+<span class="s2">import </span><span class="s1">java.io.FileNotFoundException;</span>
+<span class="s2">import </span><span class="s1">java.io.IOException;</span>
+<span class="s2">import </span><span class="s1">java.nio.charset.CharacterCodingException;</span>
+<span class="s2">import </span><span class="s1">java.nio.charset.Charset;</span>
+<span class="s2">import </span><span class="s1">java.nio.charset.StandardCharsets;</span>
+<span class="s2">import </span><span class="s1">java.nio.file.Files;</span>
+<span class="s2">import </span><span class="s1">java.nio.file.InvalidPathException;</span>
+<span class="s2">import </span><span class="s1">java.nio.file.Path;</span>
+<span class="s2">import </span><span class="s1">java.time.LocalDate;</span>
+<span class="s2">import </span><span class="s1">java.time.format.DateTimeFormatter;</span>
+<span class="s2">import </span><span class="s1">java.time.format.DateTimeParseException;</span>
+<span class="s2">import </span><span class="s1">java.time.format.ResolverStyle;</span>
+<span class="s2">import </span><span class="s1">java.util.ArrayList;</span>
+<span class="s2">import </span><span class="s1">java.util.List;</span>
+<span class="s2">import </span><span class="s1">java.util.regex.Pattern;</span>
+
+<span class="s0">/**</span>
+ <span class="s0">* Loads Order objects from a delimited text file.</span>
+ <span class="s0">*/</span>
+<span class="s2">public class </span><span class="s1">OrderFileLoader {</span>
+
+    <span class="s0">/** The character(s) that separate fields on each line, e.g. &quot;,&quot;. */</span>
+    <span class="s2">private final </span><span class="s1">String delimiter;</span>
+
+    <span class="s0">/** A line must have 8 fields (no instructions) or 9 fields (with instructions). */</span>
+    <span class="s2">private final int </span><span class="s1">minFields = </span><span class="s3">8</span><span class="s1">;</span>
+    <span class="s2">private final int </span><span class="s1">maxFields = </span><span class="s3">9</span><span class="s1">;</span>
+
+    <span class="s0">/** Files larger than 5 MB are refused so the program cannot run out of memory. */</span>
+    <span class="s2">private final long </span><span class="s1">maxFileBytes = </span><span class="s3">5L </span><span class="s1">* </span><span class="s3">1024 </span><span class="s1">* </span><span class="s3">1024</span><span class="s1">;</span>
+
+    <span class="s0">/** Dates in the file must be written as YYYY-MM-DD. STRICT rejects 2027-02-30. */</span>
+    <span class="s2">private final </span><span class="s1">DateTimeFormatter fileDateFormat =</span>
+            <span class="s1">DateTimeFormatter.ofPattern(</span><span class="s4">&quot;uuuu-MM-dd&quot;</span><span class="s1">).withResolverStyle(ResolverStyle.STRICT);</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates a loader that splits lines on the given delimiter.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">delimiter the field separator, e.g. &quot;,&quot;</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException if the delimiter is null or empty</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">OrderFileLoader(String delimiter) {</span>
+        <span class="s2">if </span><span class="s1">(delimiter == </span><span class="s2">null </span><span class="s1">|| delimiter.isEmpty()) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;A delimiter is required.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">this</span><span class="s1">.delimiter = delimiter;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Turns the text the user typed into a file path, rejecting blank names,</span>
+     <span class="s0">* names with illegal characters, and files that are not .txt files.</span>
+     <span class="s0">* Quotes around the path (added by Windows &quot;Copy as path&quot;) are removed.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">rawPath the file name or path as typed</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the file path to open</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException with a friendly message if the name is not usable</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Path resolvePath(String rawPath) {</span>
+        <span class="s2">if </span><span class="s1">(rawPath == </span><span class="s2">null </span><span class="s1">|| rawPath.trim().isEmpty()) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;The file name cannot be blank.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s1">String cleaned = rawPath.trim();</span>
+        <span class="s0">// Remove surrounding quotes, e.g. &quot;C:\Users\me\orders.txt&quot;</span>
+        <span class="s2">if </span><span class="s1">(cleaned.length() &gt;= </span><span class="s3">2 </span><span class="s1">&amp;&amp; cleaned.startsWith(</span><span class="s4">&quot;</span><span class="s6">\&quot;</span><span class="s4">&quot;</span><span class="s1">) &amp;&amp; cleaned.endsWith(</span><span class="s4">&quot;</span><span class="s6">\&quot;</span><span class="s4">&quot;</span><span class="s1">)) {</span>
+            <span class="s1">cleaned = cleaned.substring(</span><span class="s3">1</span><span class="s1">, cleaned.length() - </span><span class="s3">1</span><span class="s1">).trim();</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(cleaned.isEmpty()) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;The file name cannot be blank.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!cleaned.toLowerCase().endsWith(</span><span class="s4">&quot;.txt&quot;</span><span class="s1">)) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;Please choose a text file whose name ends in .txt (you entered </span><span class="s6">\&quot;</span><span class="s4">&quot;</span>
+                    <span class="s1">+ shorten(cleaned) + </span><span class="s4">&quot;</span><span class="s6">\&quot;</span><span class="s4">).&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s2">return </span><span class="s1">Path.of(cleaned);</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(InvalidPathException e) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;</span><span class="s6">\&quot;</span><span class="s4">&quot; </span><span class="s1">+ shorten(cleaned) + </span><span class="s4">&quot;</span><span class="s6">\&quot; </span><span class="s4">is not a valid file name.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Reads every line of a text file. The file is read as UTF-8; if it was</span>
+     <span class="s0">* saved in an older Windows encoding, it is read again as ISO-8859-1 so</span>
+     <span class="s0">* the program still works instead of failing.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">filePath the file name or path as typed by the user</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">every line in the file, in order</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException if the file name itself is not usable</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IOException              if the file is missing, a folder, unreadable or too large</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">List&lt;String&gt; readLines(String filePath) </span><span class="s2">throws </span><span class="s1">IOException {</span>
+        <span class="s1">Path path = resolvePath(filePath);</span>
+        <span class="s2">if </span><span class="s1">(!Files.exists(path)) {</span>
+            <span class="s2">throw new </span><span class="s1">FileNotFoundException(</span><span class="s4">&quot;File not found: &quot; </span><span class="s1">+ describe(path)</span>
+                    <span class="s1">+ System.lineSeparator() + </span><span class="s4">&quot;   Check the spelling, or enter the full path to the file.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(Files.isDirectory(path)) {</span>
+            <span class="s2">throw new </span><span class="s1">IOException(</span><span class="s4">&quot;That is a folder, not a file: &quot; </span><span class="s1">+ describe(path));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!Files.isReadable(path)) {</span>
+            <span class="s2">throw new </span><span class="s1">IOException(</span><span class="s4">&quot;That file cannot be opened (check its permissions): &quot; </span><span class="s1">+ describe(path));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(Files.size(path) &gt; maxFileBytes) {</span>
+            <span class="s2">throw new </span><span class="s1">IOException(</span><span class="s4">&quot;That file is too large to be an order list (over 5 MB).&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s2">return </span><span class="s1">readAllLines(path, StandardCharsets.UTF_8);</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(CharacterCodingException notUtf8) {</span>
+            <span class="s0">// Not UTF-8 (e.g., saved in Windows-1252); every byte is valid in ISO-8859-1.</span>
+            <span class="s2">return </span><span class="s1">readAllLines(path, StandardCharsets.ISO_8859_1);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Reads all lines of a file using the given character set. The file is</span>
+     <span class="s0">* closed automatically by try-with-resources, even if an error occurs.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">path    the file to read</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">charset how the file's bytes are turned into text</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">every line in the file</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IOException if the file cannot be read in that character set</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">List&lt;String&gt; readAllLines(Path path, Charset charset) </span><span class="s2">throws </span><span class="s1">IOException {</span>
+        <span class="s1">List&lt;String&gt; lines = </span><span class="s2">new </span><span class="s1">ArrayList&lt;&gt;();</span>
+        <span class="s2">try </span><span class="s1">(BufferedReader reader = Files.newBufferedReader(path, charset)) {</span>
+            <span class="s1">String line = reader.readLine();</span>
+            <span class="s2">while </span><span class="s1">(line != </span><span class="s2">null</span><span class="s1">) {</span>
+                <span class="s1">lines.add(line);</span>
+                <span class="s1">line = reader.readLine();</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s0">// Notepad sometimes adds an invisible &quot;byte order mark&quot; at the start of the file; remove it.</span>
+        <span class="s0">// It reads as one character in UTF-8, or as the three characters &quot;\u00EF\u00BB\u00BF&quot; in ISO-8859-1.</span>
+        <span class="s2">if </span><span class="s1">(!lines.isEmpty()) {</span>
+            <span class="s1">String first = lines.get(</span><span class="s3">0</span><span class="s1">);</span>
+            <span class="s2">if </span><span class="s1">(first.startsWith(</span><span class="s4">&quot;</span><span class="s6">\uFEFF</span><span class="s4">&quot;</span><span class="s1">)) {</span>
+                <span class="s1">lines.set(</span><span class="s3">0</span><span class="s1">, first.substring(</span><span class="s3">1</span><span class="s1">));</span>
+            <span class="s1">} </span><span class="s2">else if </span><span class="s1">(first.startsWith(</span><span class="s4">&quot;</span><span class="s6">\u00EF\u00BB\u00BF</span><span class="s4">&quot;</span><span class="s1">)) {</span>
+                <span class="s1">lines.set(</span><span class="s3">0</span><span class="s1">, first.substring(</span><span class="s3">3</span><span class="s1">));</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">lines;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Checks whether a line should be skipped because it is empty or a comment.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">line one line from the file</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the line is blank or starts with #</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isBlankOrComment(String line) {</span>
+        <span class="s2">return </span><span class="s1">line == </span><span class="s2">null </span><span class="s1">|| line.trim().isEmpty() || line.trim().startsWith(</span><span class="s4">&quot;#&quot;</span><span class="s1">);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Turns one line of the file into an Order. This checks the FORMAT of</span>
+     <span class="s0">* each field (is the quantity a number? is the date a real date?).</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">line one line from the file</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the Order described by the line</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException with a message naming the bad field</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Order parseLine(String line) {</span>
+        <span class="s2">if </span><span class="s1">(line == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;the line is empty.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s0">// The limit keeps any extra commas inside the last field (special instructions).</span>
+        <span class="s1">String[] parts = line.split(Pattern.quote(delimiter), maxFields);</span>
+        <span class="s2">if </span><span class="s1">(parts.length &lt; minFields) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;expected &quot; </span><span class="s1">+ maxFields + </span><span class="s4">&quot; fields separated by </span><span class="s6">\&quot;</span><span class="s4">&quot;</span>
+                    <span class="s1">+ delimiter + </span><span class="s4">&quot;</span><span class="s6">\&quot; </span><span class="s4">but found &quot; </span><span class="s1">+ parts.length + </span><span class="s4">&quot;.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">int </span><span class="s1">orderId = parseWholeNumber(parts[</span><span class="s3">0</span><span class="s1">], </span><span class="s4">&quot;order ID&quot;</span><span class="s1">);</span>
+        <span class="s1">String customerName = parts[</span><span class="s3">1</span><span class="s1">].trim();</span>
+        <span class="s1">String phoneNumber = parts[</span><span class="s3">2</span><span class="s1">].trim();</span>
+        <span class="s1">String cakeType = parts[</span><span class="s3">3</span><span class="s1">].trim();</span>
+        <span class="s2">int </span><span class="s1">quantity = parseWholeNumber(parts[</span><span class="s3">4</span><span class="s1">], </span><span class="s4">&quot;quantity&quot;</span><span class="s1">);</span>
+        <span class="s2">double </span><span class="s1">unitPrice = parseMoney(parts[</span><span class="s3">5</span><span class="s1">]);</span>
+        <span class="s1">LocalDate pickupDate = parseFileDate(parts[</span><span class="s3">6</span><span class="s1">]);</span>
+        <span class="s2">boolean </span><span class="s1">pickedUp = parseYesNo(parts[</span><span class="s3">7</span><span class="s1">]);</span>
+        <span class="s1">String instructions = (parts.length == maxFields) ? parts[</span><span class="s3">8</span><span class="s1">].trim() : </span><span class="s4">&quot;&quot;</span><span class="s1">;</span>
+        <span class="s2">return new </span><span class="s1">Order(orderId, customerName, phoneNumber, cakeType, quantity,</span>
+                <span class="s1">unitPrice, pickupDate, pickedUp, instructions);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Converts a field to a whole number.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">text      the field text</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">fieldName the field's name, used in the error message</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the whole number</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException if the text is not a whole number</span>
+     <span class="s0">*/</span>
+    <span class="s2">private int </span><span class="s1">parseWholeNumber(String text, String fieldName) {</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s2">return </span><span class="s1">Integer.parseInt(text.trim());</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(NumberFormatException e) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(fieldName + </span><span class="s4">&quot; </span><span class="s6">\&quot;</span><span class="s4">&quot; </span><span class="s1">+ shorten(text.trim()) + </span><span class="s4">&quot;</span><span class="s6">\&quot; </span><span class="s4">is not a whole number.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Converts a price field such as &quot;28.00&quot; or &quot;$28&quot; to a number.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">text the field text</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the price in dollars</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException if the text is not a plain dollar amount</span>
+     <span class="s0">*/</span>
+    <span class="s2">private double </span><span class="s1">parseMoney(String text) {</span>
+        <span class="s1">String cleaned = text.trim();</span>
+        <span class="s2">if </span><span class="s1">(cleaned.startsWith(</span><span class="s4">&quot;$&quot;</span><span class="s1">)) {</span>
+            <span class="s1">cleaned = cleaned.substring(</span><span class="s3">1</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s0">// Only plain amounts like 28 or 28.50 are allowed (no &quot;NaN&quot;, &quot;1e3&quot; or negatives).</span>
+        <span class="s2">if </span><span class="s1">(!cleaned.matches(</span><span class="s4">&quot;</span><span class="s6">\\</span><span class="s4">d{1,7}(</span><span class="s6">\\</span><span class="s4">.</span><span class="s6">\\</span><span class="s4">d+)?&quot;</span><span class="s1">)) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;unit price </span><span class="s6">\&quot;</span><span class="s4">&quot; </span><span class="s1">+ shorten(text.trim()) + </span><span class="s4">&quot;</span><span class="s6">\&quot; </span><span class="s4">is not a dollar amount.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">Double.parseDouble(cleaned);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Converts a date field written as YYYY-MM-DD.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">text the field text</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the date</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException if the text is not a real YYYY-MM-DD date</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">LocalDate parseFileDate(String text) {</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s2">return </span><span class="s1">LocalDate.parse(text.trim(), fileDateFormat);</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(DateTimeParseException e) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;pickup date </span><span class="s6">\&quot;</span><span class="s4">&quot; </span><span class="s1">+ shorten(text.trim())</span>
+                    <span class="s1">+ </span><span class="s4">&quot;</span><span class="s6">\&quot; </span><span class="s4">is not a real date in YYYY-MM-DD format.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Converts the picked-up field. Accepts true/false, yes/no or y/n in any case.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">text the field text</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">true if the order has been picked up</span>
+     <span class="s0">* </span><span class="s5">@throws </span><span class="s0">IllegalArgumentException if the text is not one of the accepted words</span>
+     <span class="s0">*/</span>
+    <span class="s2">private boolean </span><span class="s1">parseYesNo(String text) {</span>
+        <span class="s1">String cleaned = text.trim().toLowerCase();</span>
+        <span class="s2">if </span><span class="s1">(cleaned.equals(</span><span class="s4">&quot;true&quot;</span><span class="s1">) || cleaned.equals(</span><span class="s4">&quot;yes&quot;</span><span class="s1">) || cleaned.equals(</span><span class="s4">&quot;y&quot;</span><span class="s1">)) {</span>
+            <span class="s2">return true</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(cleaned.equals(</span><span class="s4">&quot;false&quot;</span><span class="s1">) || cleaned.equals(</span><span class="s4">&quot;no&quot;</span><span class="s1">) || cleaned.equals(</span><span class="s4">&quot;n&quot;</span><span class="s1">)) {</span>
+            <span class="s2">return false</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s4">&quot;picked-up value </span><span class="s6">\&quot;</span><span class="s4">&quot; </span><span class="s1">+ shorten(text.trim()) + </span><span class="s4">&quot;</span><span class="s6">\&quot; </span><span class="s4">must be true or false.&quot;</span><span class="s1">);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Shows where the program looked for a file (its full path), shortened</span>
+     <span class="s0">* if it is very long so the message stays readable.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">path the file path</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the full path as text, at most about 120 characters</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String describe(Path path) {</span>
+        <span class="s1">String full = path.toAbsolutePath().toString();</span>
+        <span class="s2">return </span><span class="s1">full.length() &lt;= </span><span class="s3">120 </span><span class="s1">? full : </span><span class="s4">&quot;...&quot; </span><span class="s1">+ full.substring(full.length() - </span><span class="s3">117</span><span class="s1">);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Shortens long text so error messages stay readable.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s5">@param </span><span class="s0">text the text to shorten</span>
+     <span class="s0">* </span><span class="s5">@return </span><span class="s0">the text, cut to 40 characters with &quot;...&quot; if it was longer</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String shorten(String text) {</span>
+        <span class="s2">return </span><span class="s1">text.length() &lt;= </span><span class="s3">40 </span><span class="s1">? text : text.substring(</span><span class="s3">0</span><span class="s1">, </span><span class="s3">37</span><span class="s1">) + </span><span class="s4">&quot;...&quot;</span><span class="s1">;</span>
+    <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

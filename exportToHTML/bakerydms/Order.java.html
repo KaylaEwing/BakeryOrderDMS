@@ -1,0 +1,249 @@
+<html>
+<head>
+<title>Order.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #8c8c8c; font-style: italic;}
+.s4 { color: #067d17;}
+.s5 { color: #1750eb;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+Order.java</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Name:    Kayla Ewing 
+ * Course:  CEN 3024C - Software Development I 
+ * Date:    October 19, 2026 
+ * Class:   Order 
+ * 
+ * Purpose: Represents one custom cake order placed at the bakery. This is the 
+ *          data object that the Bakery Order Management System (DMS) stores 
+ *          and manages. It holds nine attributes of five different data types 
+ *          (int, String, double, LocalDate and boolean). 
+ * 
+ *          The Order class only stores data. It does not check whether the 
+ *          data is valid; that is the job of OrderValidator, and the 
+ *          OrderManager makes sure only valid orders are ever stored. 
+ */</span>
+<span class="s2">package </span><span class="s1">bakerydms;</span>
+
+<span class="s2">import </span><span class="s1">java.math.BigDecimal;</span>
+<span class="s2">import </span><span class="s1">java.math.RoundingMode;</span>
+<span class="s2">import </span><span class="s1">java.time.LocalDate;</span>
+
+<span class="s0">/**</span>
+ <span class="s0">* A single custom cake order.</span>
+ <span class="s0">*/</span>
+<span class="s2">public class </span><span class="s1">Order {</span>
+
+    <span class="s0">/** Unique 4-digit number that identifies the order (1000-9999). */</span>
+    <span class="s2">private int </span><span class="s1">orderId;</span>
+
+    <span class="s0">/** Full name of the customer who placed the order. */</span>
+    <span class="s2">private </span><span class="s1">String customerName;</span>
+
+    <span class="s0">/** 10-digit callback number, stored as text in the format 407-555-0142. */</span>
+    <span class="s2">private </span><span class="s1">String phoneNumber;</span>
+
+    <span class="s0">/** Type of cake: Chocolate, Vanilla, Red Velvet or Carrot. */</span>
+    <span class="s2">private </span><span class="s1">String cakeType;</span>
+
+    <span class="s0">/** Number of cakes ordered (1-50). */</span>
+    <span class="s2">private int </span><span class="s1">quantity;</span>
+
+    <span class="s0">/** Price of one cake in U.S. dollars. */</span>
+    <span class="s2">private double </span><span class="s1">unitPrice;</span>
+
+    <span class="s0">/** The day the customer will collect the order. */</span>
+    <span class="s2">private </span><span class="s1">LocalDate pickupDate;</span>
+
+    <span class="s0">/** True once the customer has collected the order. */</span>
+    <span class="s2">private boolean </span><span class="s1">pickedUp;</span>
+
+    <span class="s0">/** Optional notes such as writing on the cake or allergy information. */</span>
+    <span class="s2">private </span><span class="s1">String specialInstructions;</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates a new order with every attribute set.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">orderId             unique 4-digit order number</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">customerName        customer's full name</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">phoneNumber         customer's phone number</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">cakeType            type of cake ordered</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">quantity            number of cakes</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">unitPrice           price of one cake in dollars</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">pickupDate          date the order will be collected</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">pickedUp            true if the order has already been collected</span>
+     <span class="s0">* </span><span class="s3">@param </span><span class="s0">specialInstructions notes for the baker (may be empty)</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Order(</span><span class="s2">int </span><span class="s1">orderId, String customerName, String phoneNumber, String cakeType,</span>
+                 <span class="s2">int </span><span class="s1">quantity, </span><span class="s2">double </span><span class="s1">unitPrice, LocalDate pickupDate, </span><span class="s2">boolean </span><span class="s1">pickedUp,</span>
+                 <span class="s1">String specialInstructions) {</span>
+        <span class="s2">this</span><span class="s1">.orderId = orderId;</span>
+        <span class="s2">this</span><span class="s1">.customerName = customerName;</span>
+        <span class="s2">this</span><span class="s1">.phoneNumber = phoneNumber;</span>
+        <span class="s2">this</span><span class="s1">.cakeType = cakeType;</span>
+        <span class="s2">this</span><span class="s1">.quantity = quantity;</span>
+        <span class="s2">this</span><span class="s1">.unitPrice = unitPrice;</span>
+        <span class="s2">this</span><span class="s1">.pickupDate = pickupDate;</span>
+        <span class="s2">this</span><span class="s1">.pickedUp = pickedUp;</span>
+        <span class="s0">// Store &quot;no instructions&quot; as an empty string instead of null so it can always be printed safely.</span>
+        <span class="s2">this</span><span class="s1">.specialInstructions = (specialInstructions == </span><span class="s2">null</span><span class="s1">) ? </span><span class="s4">&quot;&quot; </span><span class="s1">: specialInstructions;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Makes an independent copy of this order. The OrderManager hands out</span>
+     <span class="s0">* copies so that code outside the manager can never change a stored order</span>
+     <span class="s0">* without going through validation first.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">a new Order with the same values as this one</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Order copy() {</span>
+        <span class="s2">return new </span><span class="s1">Order(orderId, customerName, phoneNumber, cakeType, quantity,</span>
+                <span class="s1">unitPrice, pickupDate, pickedUp, specialInstructions);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Calculates the cost of the order before tax (quantity x unit price),</span>
+     <span class="s0">* rounded to the nearest cent.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">the order subtotal in dollars</span>
+     <span class="s0">*/</span>
+    <span class="s2">public double </span><span class="s1">calculateSubtotal() {</span>
+        <span class="s0">// BigDecimal avoids floating-point rounding errors with money.</span>
+        <span class="s2">return </span><span class="s1">BigDecimal.valueOf(unitPrice)</span>
+                <span class="s1">.multiply(BigDecimal.valueOf(quantity))</span>
+                <span class="s1">.setScale(</span><span class="s5">2</span><span class="s1">, RoundingMode.HALF_UP)</span>
+                <span class="s1">.doubleValue();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Describes whether the order has been collected yet.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">&quot;Picked up&quot; or &quot;Waiting&quot;</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String getStatus() {</span>
+        <span class="s2">return </span><span class="s1">pickedUp ? </span><span class="s4">&quot;Picked up&quot; </span><span class="s1">: </span><span class="s4">&quot;Waiting&quot;</span><span class="s1">;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ---------------------------------------------------------------</span>
+    <span class="s0">// Getters: return the value of each attribute.</span>
+    <span class="s0">// ---------------------------------------------------------------</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the unique order number */</span>
+    <span class="s2">public int </span><span class="s1">getOrderId() {</span>
+        <span class="s2">return </span><span class="s1">orderId;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the customer's full name */</span>
+    <span class="s2">public </span><span class="s1">String getCustomerName() {</span>
+        <span class="s2">return </span><span class="s1">customerName;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the customer's phone number */</span>
+    <span class="s2">public </span><span class="s1">String getPhoneNumber() {</span>
+        <span class="s2">return </span><span class="s1">phoneNumber;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the type of cake ordered */</span>
+    <span class="s2">public </span><span class="s1">String getCakeType() {</span>
+        <span class="s2">return </span><span class="s1">cakeType;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the number of cakes ordered */</span>
+    <span class="s2">public int </span><span class="s1">getQuantity() {</span>
+        <span class="s2">return </span><span class="s1">quantity;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the price of one cake in dollars */</span>
+    <span class="s2">public double </span><span class="s1">getUnitPrice() {</span>
+        <span class="s2">return </span><span class="s1">unitPrice;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the date the order will be collected */</span>
+    <span class="s2">public </span><span class="s1">LocalDate getPickupDate() {</span>
+        <span class="s2">return </span><span class="s1">pickupDate;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">true if the customer has collected the order */</span>
+    <span class="s2">public boolean </span><span class="s1">isPickedUp() {</span>
+        <span class="s2">return </span><span class="s1">pickedUp;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@return </span><span class="s0">the special instructions, or an empty string if there are none */</span>
+    <span class="s2">public </span><span class="s1">String getSpecialInstructions() {</span>
+        <span class="s2">return </span><span class="s1">specialInstructions;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ---------------------------------------------------------------</span>
+    <span class="s0">// Setters: change the value of each attribute. These are the only</span>
+    <span class="s0">// void methods in the program (besides main), as planned in the UML.</span>
+    <span class="s0">// ---------------------------------------------------------------</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">orderId the new unique order number */</span>
+    <span class="s2">public void </span><span class="s1">setOrderId(</span><span class="s2">int </span><span class="s1">orderId) {</span>
+        <span class="s2">this</span><span class="s1">.orderId = orderId;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">customerName the new customer name */</span>
+    <span class="s2">public void </span><span class="s1">setCustomerName(String customerName) {</span>
+        <span class="s2">this</span><span class="s1">.customerName = customerName;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">phoneNumber the new phone number */</span>
+    <span class="s2">public void </span><span class="s1">setPhoneNumber(String phoneNumber) {</span>
+        <span class="s2">this</span><span class="s1">.phoneNumber = phoneNumber;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">cakeType the new cake type */</span>
+    <span class="s2">public void </span><span class="s1">setCakeType(String cakeType) {</span>
+        <span class="s2">this</span><span class="s1">.cakeType = cakeType;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">quantity the new number of cakes */</span>
+    <span class="s2">public void </span><span class="s1">setQuantity(</span><span class="s2">int </span><span class="s1">quantity) {</span>
+        <span class="s2">this</span><span class="s1">.quantity = quantity;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">unitPrice the new price of one cake */</span>
+    <span class="s2">public void </span><span class="s1">setUnitPrice(</span><span class="s2">double </span><span class="s1">unitPrice) {</span>
+        <span class="s2">this</span><span class="s1">.unitPrice = unitPrice;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">pickupDate the new pickup date */</span>
+    <span class="s2">public void </span><span class="s1">setPickupDate(LocalDate pickupDate) {</span>
+        <span class="s2">this</span><span class="s1">.pickupDate = pickupDate;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">pickedUp true if the order has been collected */</span>
+    <span class="s2">public void </span><span class="s1">setPickedUp(</span><span class="s2">boolean </span><span class="s1">pickedUp) {</span>
+        <span class="s2">this</span><span class="s1">.pickedUp = pickedUp;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s3">@param </span><span class="s0">specialInstructions the new notes for the baker (null is stored as empty) */</span>
+    <span class="s2">public void </span><span class="s1">setSpecialInstructions(String specialInstructions) {</span>
+        <span class="s2">this</span><span class="s1">.specialInstructions = (specialInstructions == </span><span class="s2">null</span><span class="s1">) ? </span><span class="s4">&quot;&quot; </span><span class="s1">: specialInstructions;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Builds a one-line, human-readable summary of the order.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s3">@return </span><span class="s0">the order as a single line of text</span>
+     <span class="s0">*/</span>
+    <span class="s1">@Override</span>
+    <span class="s2">public </span><span class="s1">String toString() {</span>
+        <span class="s2">return </span><span class="s1">String.format(</span><span class="s4">&quot;Order #%d | %s | %s | %d x %s @ $%.2f | Pickup %s | %s | Notes: %s&quot;</span><span class="s1">,</span>
+                <span class="s1">orderId, customerName, phoneNumber, quantity, cakeType, unitPrice,</span>
+                <span class="s1">pickupDate, getStatus(), specialInstructions.isEmpty() ? </span><span class="s4">&quot;(none)&quot; </span><span class="s1">: specialInstructions);</span>
+    <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

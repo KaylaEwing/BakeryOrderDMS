@@ -1,0 +1,391 @@
+<html>
+<head>
+<title>OrderManager.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #1750eb;}
+.s4 { color: #8c8c8c; font-style: italic;}
+.s5 { color: #067d17;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+OrderManager.java</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Name:    Kayla Ewing 
+ * Course:  CEN 3024C - Software Development I 
+ * Date:    October 19, 2026 
+ * Class:   OrderManager 
+ * 
+ * Purpose: The business logic layer of the DMS. It keeps the list of Order 
+ *          objects and performs every operation on them: 
+ *            - Create: add one order, or load many from a text file 
+ *            - Read:   return all orders, or find one by ID 
+ *            - Update: replace an order with an edited copy 
+ *            - Delete: remove an order by ID 
+ *            - Custom action: generate the Daily Production Report 
+ *          Every order is validated before it is stored, so the list can only 
+ *          ever contain good data. Methods return results (lists of error 
+ *          messages, booleans, objects) instead of printing, so they are easy 
+ *          to test and can be reused by the GUI in a later phase. 
+ */</span>
+<span class="s2">package </span><span class="s1">bakerydms;</span>
+
+<span class="s2">import </span><span class="s1">java.math.BigDecimal;</span>
+<span class="s2">import </span><span class="s1">java.math.RoundingMode;</span>
+<span class="s2">import </span><span class="s1">java.io.IOException;</span>
+<span class="s2">import </span><span class="s1">java.time.Clock;</span>
+<span class="s2">import </span><span class="s1">java.time.LocalDate;</span>
+<span class="s2">import </span><span class="s1">java.util.ArrayList;</span>
+<span class="s2">import </span><span class="s1">java.util.Comparator;</span>
+<span class="s2">import </span><span class="s1">java.util.LinkedHashMap;</span>
+<span class="s2">import </span><span class="s1">java.util.List;</span>
+<span class="s2">import </span><span class="s1">java.util.Map;</span>
+<span class="s2">import </span><span class="s1">java.util.Optional;</span>
+
+<span class="s0">/**</span>
+ <span class="s0">* Stores orders and performs CRUD operations and the daily report on them.</span>
+ <span class="s0">*/</span>
+<span class="s2">public class </span><span class="s1">OrderManager {</span>
+
+    <span class="s0">/** All orders currently in the system. Phase 1 keeps them in memory only. */</span>
+    <span class="s2">private final </span><span class="s1">List&lt;Order&gt; orders = </span><span class="s2">new </span><span class="s1">ArrayList&lt;&gt;();</span>
+
+    <span class="s0">/** Checks every order before it is stored. */</span>
+    <span class="s2">private final </span><span class="s1">OrderValidator validator;</span>
+
+    <span class="s0">/** Reads orders from text files. */</span>
+    <span class="s2">private final </span><span class="s1">OrderFileLoader loader;</span>
+
+    <span class="s0">/** Sales tax rate, e.g. 0.07 for 7%. */</span>
+    <span class="s2">private final double </span><span class="s1">taxRate;</span>
+
+    <span class="s0">/** Source of &quot;today&quot;. Passing a Clock in lets tests use a fixed date. */</span>
+    <span class="s2">private final </span><span class="s1">Clock clock;</span>
+
+    <span class="s0">/** At most this many skipped-line messages are listed after a file load. */</span>
+    <span class="s2">private final int </span><span class="s1">maxProblemsShown = </span><span class="s3">20</span><span class="s1">;</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates a manager that uses the computer's clock for today's date.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">validator checks order data</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">loader    reads order files</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">taxRate   sales tax rate from 0 to 1 (0.07 = 7%)</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">OrderManager(OrderValidator validator, OrderFileLoader loader, </span><span class="s2">double </span><span class="s1">taxRate) {</span>
+        <span class="s2">this</span><span class="s1">(validator, loader, taxRate, Clock.systemDefaultZone());</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates a manager with a specific clock (used for testing with a fixed date).</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">validator checks order data</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">loader    reads order files</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">taxRate   sales tax rate from 0 to 1 (0.07 = 7%)</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">clock     source of today's date</span>
+     <span class="s0">* </span><span class="s4">@throws </span><span class="s0">IllegalArgumentException if any argument is missing or the tax rate is out of range</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">OrderManager(OrderValidator validator, OrderFileLoader loader, </span><span class="s2">double </span><span class="s1">taxRate, Clock clock) {</span>
+        <span class="s2">if </span><span class="s1">(validator == </span><span class="s2">null </span><span class="s1">|| loader == </span><span class="s2">null </span><span class="s1">|| clock == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s5">&quot;Validator, loader and clock are required.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(!Double.isFinite(taxRate) || taxRate &lt; </span><span class="s3">0 </span><span class="s1">|| taxRate &gt; </span><span class="s3">1</span><span class="s1">) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s5">&quot;Tax rate must be between 0 and 1.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">this</span><span class="s1">.validator = validator;</span>
+        <span class="s2">this</span><span class="s1">.loader = loader;</span>
+        <span class="s2">this</span><span class="s1">.taxRate = taxRate;</span>
+        <span class="s2">this</span><span class="s1">.clock = clock;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s4">@return </span><span class="s0">today's date according to the manager's clock */</span>
+    <span class="s2">public </span><span class="s1">LocalDate getToday() {</span>
+        <span class="s2">return </span><span class="s1">LocalDate.now(clock);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s4">@return </span><span class="s0">the sales tax rate (0.07 = 7%) */</span>
+    <span class="s2">public double </span><span class="s1">getTaxRate() {</span>
+        <span class="s2">return </span><span class="s1">taxRate;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s4">@return </span><span class="s0">the validator, so the user interface can show the same rules */</span>
+    <span class="s2">public </span><span class="s1">OrderValidator getValidator() {</span>
+        <span class="s2">return </span><span class="s1">validator;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// CREATE</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Validates an order and stores it if every rule passes and its ID is</span>
+     <span class="s0">* not already used. New orders must have a pickup date from today on.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">order the order to add</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a list of problems; an EMPTY list means the order was added</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">List&lt;String&gt; addOrder(Order order) {</span>
+        <span class="s2">if </span><span class="s1">(order == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s1">List.of(</span><span class="s5">&quot;No order was provided.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s1">Order cleaned = validator.normalize(order);</span>
+        <span class="s1">LocalDate today = getToday();</span>
+        <span class="s1">List&lt;String&gt; errors = validator.validate(cleaned, today, today);</span>
+        <span class="s0">// Only check for a duplicate if the ID itself is valid (avoids two messages for one problem).</span>
+        <span class="s2">if </span><span class="s1">(validator.isValidOrderId(cleaned.getOrderId()) &amp;&amp; isIdTaken(cleaned.getOrderId())) {</span>
+            <span class="s1">errors.add(</span><span class="s5">&quot;Order #&quot; </span><span class="s1">+ cleaned.getOrderId() + </span><span class="s5">&quot; already exists. Order IDs must be unique.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(errors.isEmpty()) {</span>
+            <span class="s1">orders.add(cleaned);</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">errors;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Loads orders from a text file. Each line is checked separately: good</span>
+     <span class="s0">* lines are added and bad lines are skipped with a message explaining why,</span>
+     <span class="s0">* so one bad line never stops the whole file from loading.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">filePath the file name or path typed by the user</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">messages for the user: a summary line followed by any skipped lines</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">List&lt;String&gt; loadFromFile(String filePath) {</span>
+        <span class="s1">List&lt;String&gt; messages = </span><span class="s2">new </span><span class="s1">ArrayList&lt;&gt;();</span>
+        <span class="s1">List&lt;String&gt; lines;</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s1">lines = loader.readLines(filePath);</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(IllegalArgumentException | IOException e) {</span>
+            <span class="s1">messages.add(</span><span class="s5">&quot;Could not load the file. &quot; </span><span class="s1">+ e.getMessage());</span>
+            <span class="s2">return </span><span class="s1">messages;</span>
+        <span class="s1">}</span>
+
+        <span class="s2">int </span><span class="s1">added = </span><span class="s3">0</span><span class="s1">;</span>
+        <span class="s2">int </span><span class="s1">dataLines = </span><span class="s3">0</span><span class="s1">;</span>
+        <span class="s1">List&lt;String&gt; problems = </span><span class="s2">new </span><span class="s1">ArrayList&lt;&gt;();</span>
+        <span class="s2">for </span><span class="s1">(</span><span class="s2">int </span><span class="s1">i = </span><span class="s3">0</span><span class="s1">; i &lt; lines.size(); i++) {</span>
+            <span class="s1">String line = lines.get(i);</span>
+            <span class="s2">if </span><span class="s1">(loader.isBlankOrComment(line)) {</span>
+                <span class="s2">continue</span><span class="s1">; </span><span class="s0">// skip empty lines and # comments</span>
+            <span class="s1">}</span>
+            <span class="s1">dataLines++;</span>
+            <span class="s2">int </span><span class="s1">lineNumber = i + </span><span class="s3">1</span><span class="s1">; </span><span class="s0">// people count lines from 1, not 0</span>
+            <span class="s2">try </span><span class="s1">{</span>
+                <span class="s1">Order order = loader.parseLine(line);</span>
+                <span class="s1">List&lt;String&gt; errors = addOrder(order);</span>
+                <span class="s2">if </span><span class="s1">(errors.isEmpty()) {</span>
+                    <span class="s1">added++;</span>
+                <span class="s1">} </span><span class="s2">else </span><span class="s1">{</span>
+                    <span class="s1">problems.add(</span><span class="s5">&quot;Line &quot; </span><span class="s1">+ lineNumber + </span><span class="s5">&quot; skipped: &quot; </span><span class="s1">+ String.join(</span><span class="s5">&quot; &quot;</span><span class="s1">, errors));</span>
+                <span class="s1">}</span>
+            <span class="s1">} </span><span class="s2">catch </span><span class="s1">(IllegalArgumentException e) {</span>
+                <span class="s1">problems.add(</span><span class="s5">&quot;Line &quot; </span><span class="s1">+ lineNumber + </span><span class="s5">&quot; skipped: &quot; </span><span class="s1">+ e.getMessage());</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+
+        <span class="s2">if </span><span class="s1">(dataLines == </span><span class="s3">0</span><span class="s1">) {</span>
+            <span class="s1">messages.add(</span><span class="s5">&quot;The file was opened, but it has no order lines to load.&quot;</span><span class="s1">);</span>
+            <span class="s2">return </span><span class="s1">messages;</span>
+        <span class="s1">}</span>
+        <span class="s1">messages.add(</span><span class="s5">&quot;Loaded &quot; </span><span class="s1">+ added + </span><span class="s5">&quot; of &quot; </span><span class="s1">+ dataLines + </span><span class="s5">&quot; orders. &quot;</span>
+                <span class="s1">+ problems.size() + </span><span class="s5">&quot; line(s) skipped. The system now holds &quot; </span><span class="s1">+ orders.size() + </span><span class="s5">&quot; orders.&quot;</span><span class="s1">);</span>
+        <span class="s0">// List the problems, but not thousands of them if the wrong file was chosen.</span>
+        <span class="s2">for </span><span class="s1">(</span><span class="s2">int </span><span class="s1">i = </span><span class="s3">0</span><span class="s1">; i &lt; problems.size() &amp;&amp; i &lt; maxProblemsShown; i++) {</span>
+            <span class="s1">messages.add(</span><span class="s5">&quot;  - &quot; </span><span class="s1">+ problems.get(i));</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(problems.size() &gt; maxProblemsShown) {</span>
+            <span class="s1">messages.add(</span><span class="s5">&quot;  ...and &quot; </span><span class="s1">+ (problems.size() - maxProblemsShown) + </span><span class="s5">&quot; more skipped line(s).&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">messages;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// READ</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Returns copies of every order, sorted by order ID. Copies are returned</span>
+     <span class="s0">* so stored orders can only be changed through updateOrder().</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">all orders in the system</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">List&lt;Order&gt; getAllOrders() {</span>
+        <span class="s1">List&lt;Order&gt; copies = </span><span class="s2">new </span><span class="s1">ArrayList&lt;&gt;();</span>
+        <span class="s2">for </span><span class="s1">(Order order : orders) {</span>
+            <span class="s1">copies.add(order.copy());</span>
+        <span class="s1">}</span>
+        <span class="s1">copies.sort(Comparator.comparingInt(Order::getOrderId));</span>
+        <span class="s2">return </span><span class="s1">copies;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Finds an order by its ID.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">orderId the order number to look for</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a copy of the order, or an empty Optional if no order has that ID</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">Optional&lt;Order&gt; findOrderById(</span><span class="s2">int </span><span class="s1">orderId) {</span>
+        <span class="s2">for </span><span class="s1">(Order order : orders) {</span>
+            <span class="s2">if </span><span class="s1">(order.getOrderId() == orderId) {</span>
+                <span class="s2">return </span><span class="s1">Optional.of(order.copy());</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">Optional.empty();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">orderId the order number to check</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">true if an order with this ID is already stored</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">isIdTaken(</span><span class="s2">int </span><span class="s1">orderId) {</span>
+        <span class="s2">return </span><span class="s1">findOrderById(orderId).isPresent();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s4">@return </span><span class="s0">how many orders are stored */</span>
+    <span class="s2">public int </span><span class="s1">getOrderCount() {</span>
+        <span class="s2">return </span><span class="s1">orders.size();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// UPDATE</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Replaces an order with an edited version after checking every field.</span>
+     <span class="s0">* Any field can change, including the order ID (if the new ID is unused).</span>
+     <span class="s0">* The pickup date may stay as it was even if that day has passed, but a</span>
+     <span class="s0">* changed date must be from today on.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">orderId the ID of the order to change</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">updated the edited order</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a list of problems; an EMPTY list means the order was updated</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">List&lt;String&gt; updateOrder(</span><span class="s2">int </span><span class="s1">orderId, Order updated) {</span>
+        <span class="s2">int </span><span class="s1">index = indexOf(orderId);</span>
+        <span class="s2">if </span><span class="s1">(index &lt; </span><span class="s3">0</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s1">List.of(</span><span class="s5">&quot;Order #&quot; </span><span class="s1">+ orderId + </span><span class="s5">&quot; was not found.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(updated == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s1">List.of(</span><span class="s5">&quot;No order was provided.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s1">Order original = orders.get(index);</span>
+        <span class="s1">Order cleaned = validator.normalize(updated);</span>
+        <span class="s1">LocalDate today = getToday();</span>
+        <span class="s0">// An old pickup date that hasn't changed is still allowed; a new date must be today or later.</span>
+        <span class="s1">LocalDate earliest = original.getPickupDate().isBefore(today) ? original.getPickupDate() : today;</span>
+        <span class="s1">List&lt;String&gt; errors = validator.validate(cleaned, earliest, today);</span>
+        <span class="s2">boolean </span><span class="s1">idChanged = cleaned.getOrderId() != orderId;</span>
+        <span class="s2">if </span><span class="s1">(idChanged &amp;&amp; validator.isValidOrderId(cleaned.getOrderId()) &amp;&amp; isIdTaken(cleaned.getOrderId())) {</span>
+            <span class="s1">errors.add(</span><span class="s5">&quot;Order #&quot; </span><span class="s1">+ cleaned.getOrderId() + </span><span class="s5">&quot; already exists. Order IDs must be unique.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(errors.isEmpty()) {</span>
+            <span class="s1">orders.set(index, cleaned);</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">errors;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// DELETE</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Removes the order with the given ID.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">orderId the order number to remove</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">true if an order was removed, false if no order had that ID</span>
+     <span class="s0">*/</span>
+    <span class="s2">public boolean </span><span class="s1">removeOrder(</span><span class="s2">int </span><span class="s1">orderId) {</span>
+        <span class="s2">return </span><span class="s1">orders.removeIf(order -&gt; order.getOrderId() == orderId);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// CALCULATIONS AND CUSTOM ACTION</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Calculates sales tax on an amount, rounded to the nearest cent.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">subtotal the amount before tax</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the tax amount</span>
+     <span class="s0">*/</span>
+    <span class="s2">public double </span><span class="s1">calculateTax(</span><span class="s2">double </span><span class="s1">subtotal) {</span>
+        <span class="s2">return </span><span class="s1">BigDecimal.valueOf(subtotal)</span>
+                <span class="s1">.multiply(BigDecimal.valueOf(taxRate))</span>
+                <span class="s1">.setScale(</span><span class="s3">2</span><span class="s1">, RoundingMode.HALF_UP)</span>
+                <span class="s1">.doubleValue();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Calculates what the customer pays for an order: subtotal plus sales tax.</span>
+     <span class="s0">* Example: 2 Red Velvet cakes at $28.00 = $56.00 + $3.92 tax = $59.92.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">order the order to price</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the order total in dollars</span>
+     <span class="s0">*/</span>
+    <span class="s2">public double </span><span class="s1">calculateTotal(Order order) {</span>
+        <span class="s2">double </span><span class="s1">subtotal = order.calculateSubtotal();</span>
+        <span class="s2">return </span><span class="s1">BigDecimal.valueOf(subtotal)</span>
+                <span class="s1">.add(BigDecimal.valueOf(calculateTax(subtotal)))</span>
+                <span class="s1">.setScale(</span><span class="s3">2</span><span class="s1">, RoundingMode.HALF_UP)</span>
+                <span class="s1">.doubleValue();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* CUSTOM ACTION: Daily Production Report.</span>
+     <span class="s0">* For the chosen pickup date, counts how many cakes of each type must be</span>
+     <span class="s0">* baked and calculates the expected revenue. Only orders that are due on</span>
+     <span class="s0">* that date AND have not been picked up yet are counted.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">date the pickup date to report on</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the finished report (with zero orders if nothing is due)</span>
+     <span class="s0">* </span><span class="s4">@throws </span><span class="s0">IllegalArgumentException if the date is null</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">DailyReport generateDailyReport(LocalDate date) {</span>
+        <span class="s2">if </span><span class="s1">(date == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">throw new </span><span class="s1">IllegalArgumentException(</span><span class="s5">&quot;A report date is required.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s0">// Start every cake type at 0 so the report always lists all four.</span>
+        <span class="s1">Map&lt;String, Integer&gt; cakeCounts = </span><span class="s2">new </span><span class="s1">LinkedHashMap&lt;&gt;();</span>
+        <span class="s2">for </span><span class="s1">(String type : validator.getValidCakeTypes()) {</span>
+            <span class="s1">cakeCounts.put(type, </span><span class="s3">0</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s2">int </span><span class="s1">orderCount = </span><span class="s3">0</span><span class="s1">;</span>
+        <span class="s1">BigDecimal subtotal = BigDecimal.ZERO;</span>
+        <span class="s2">for </span><span class="s1">(Order order : orders) {</span>
+            <span class="s2">if </span><span class="s1">(order.getPickupDate().equals(date) &amp;&amp; !order.isPickedUp()) {</span>
+                <span class="s1">cakeCounts.merge(order.getCakeType(), order.getQuantity(), Integer::sum);</span>
+                <span class="s1">subtotal = subtotal.add(BigDecimal.valueOf(order.calculateSubtotal()));</span>
+                <span class="s1">orderCount++;</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s2">double </span><span class="s1">subtotalValue = subtotal.setScale(</span><span class="s3">2</span><span class="s1">, RoundingMode.HALF_UP).doubleValue();</span>
+        <span class="s2">double </span><span class="s1">tax = calculateTax(subtotalValue);</span>
+        <span class="s2">double </span><span class="s1">revenue = BigDecimal.valueOf(subtotalValue).add(BigDecimal.valueOf(tax))</span>
+                <span class="s1">.setScale(</span><span class="s3">2</span><span class="s1">, RoundingMode.HALF_UP).doubleValue();</span>
+        <span class="s2">return new </span><span class="s1">DailyReport(date, cakeCounts, orderCount, subtotalValue, tax, revenue, taxRate);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Finds where an order is stored in the list.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">orderId the order number to look for</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the position in the list, or -1 if not found</span>
+     <span class="s0">*/</span>
+    <span class="s2">private int </span><span class="s1">indexOf(</span><span class="s2">int </span><span class="s1">orderId) {</span>
+        <span class="s2">for </span><span class="s1">(</span><span class="s2">int </span><span class="s1">i = </span><span class="s3">0</span><span class="s1">; i &lt; orders.size(); i++) {</span>
+            <span class="s2">if </span><span class="s1">(orders.get(i).getOrderId() == orderId) {</span>
+                <span class="s2">return </span><span class="s1">i;</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">-</span><span class="s3">1</span><span class="s1">;</span>
+    <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

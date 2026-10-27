@@ -1,0 +1,761 @@
+<html>
+<head>
+<title>BakeryApp.java</title>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<style type="text/css">
+.s0 { color: #8c8c8c; font-style: italic;}
+.s1 { color: #080808;}
+.s2 { color: #0033b3;}
+.s3 { color: #067d17;}
+.s4 { color: #8c8c8c; font-style: italic;}
+.s5 { color: #1750eb;}
+.s6 { color: #0037a6;}
+</style>
+</head>
+<body bgcolor="#ffffff">
+<table CELLSPACING=0 CELLPADDING=5 COLS=1 WIDTH="100%" BGCOLOR="#c0c0c0" >
+<tr><td><center>
+<font face="Arial, Helvetica" color="#000000">
+BakeryApp.java</font>
+</center></td></tr></table>
+<pre><span class="s0">/* 
+ * Name:   Kayla Ewing 
+ * Course:  CEN 3024C - Software Development I 
+ * Date:    October 19, 2026 
+ * Class:   BakeryApp 
+ * 
+ * Purpose: The presentation layer and starting point of the Bakery Order 
+ *          Management System (Phase 1: command-line version). It shows the 
+ *          main menu, reads what the user types, checks every value, and 
+ *          calls OrderManager to do the real work. All output is printed to 
+ *          the console. 
+ * 
+ *          The program can never be crashed by bad input: 
+ *            - every number, date and yes/no answer is checked and re-asked 
+ *            - typing &quot;cancel&quot; during add/update/remove returns to the menu 
+ *            - closing the input stream ends the program politely 
+ *            - any unexpected error is caught and the menu is shown again 
+ *          The program ends only when the user chooses Exit. 
+ * 
+ *          main() is the only static method in the project. Java requires the 
+ *          program's entry point to be static; main() simply creates the 
+ *          objects and calls run(), and all other code is in instance methods. 
+ */</span>
+<span class="s2">package </span><span class="s1">bakerydms;</span>
+
+<span class="s2">import </span><span class="s1">java.time.LocalDate;</span>
+<span class="s2">import </span><span class="s1">java.util.List;</span>
+<span class="s2">import </span><span class="s1">java.util.NoSuchElementException;</span>
+<span class="s2">import </span><span class="s1">java.util.Optional;</span>
+<span class="s2">import </span><span class="s1">java.util.Scanner;</span>
+
+<span class="s0">/**</span>
+ <span class="s0">* Command-line menu for the Bakery Order Management System.</span>
+ <span class="s0">*/</span>
+<span class="s2">public class </span><span class="s1">BakeryApp {</span>
+
+    <span class="s0">/** Performs all CRUD operations and the daily report. */</span>
+    <span class="s2">private final </span><span class="s1">OrderManager manager;</span>
+
+    <span class="s0">/** Shortcut to the validation rules (the same object the manager uses). */</span>
+    <span class="s2">private final </span><span class="s1">OrderValidator validator;</span>
+
+    <span class="s0">/** Reads what the user types. */</span>
+    <span class="s2">private final </span><span class="s1">Scanner scanner;</span>
+
+    <span class="s0">/** The word the user types to stop adding/updating/removing and go back to the menu. */</span>
+    <span class="s2">private final </span><span class="s1">String cancelWord = </span><span class="s3">&quot;cancel&quot;</span><span class="s1">;</span>
+
+    <span class="s0">/** Menu option that ends the program. */</span>
+    <span class="s2">private final </span><span class="s1">String exitChoice = </span><span class="s3">&quot;7&quot;</span><span class="s1">;</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Starts the program. This is the only static method: it builds the</span>
+     <span class="s0">* objects the program needs and hands control to run().</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">args command-line arguments (not used)</span>
+     <span class="s0">*/</span>
+    <span class="s2">public static void </span><span class="s1">main(String[] args) {</span>
+        <span class="s1">OrderValidator validator = </span><span class="s2">new </span><span class="s1">OrderValidator(List.of(</span><span class="s3">&quot;Chocolate&quot;</span><span class="s1">, </span><span class="s3">&quot;Vanilla&quot;</span><span class="s1">, </span><span class="s3">&quot;Red Velvet&quot;</span><span class="s1">, </span><span class="s3">&quot;Carrot&quot;</span><span class="s1">));</span>
+        <span class="s1">OrderFileLoader loader = </span><span class="s2">new </span><span class="s1">OrderFileLoader(</span><span class="s3">&quot;,&quot;</span><span class="s1">);</span>
+        <span class="s1">OrderManager manager = </span><span class="s2">new </span><span class="s1">OrderManager(validator, loader, </span><span class="s5">0.07</span><span class="s1">);</span>
+        <span class="s1">BakeryApp app = </span><span class="s2">new </span><span class="s1">BakeryApp(manager, </span><span class="s2">new </span><span class="s1">Scanner(System.in));</span>
+        <span class="s1">app.run();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Creates the app.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">manager the order manager that stores and processes orders</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">scanner reads keyboard input</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">BakeryApp(OrderManager manager, Scanner scanner) {</span>
+        <span class="s2">this</span><span class="s1">.manager = manager;</span>
+        <span class="s2">this</span><span class="s1">.validator = manager.getValidator();</span>
+        <span class="s2">this</span><span class="s1">.scanner = scanner;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Shows the menu over and over until the user chooses Exit.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">0 when the program ends normally</span>
+     <span class="s0">*/</span>
+    <span class="s2">public int </span><span class="s1">run() {</span>
+        <span class="s1">System.out.println();</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;Welcome to the Bakery Order Management System!&quot;</span><span class="s1">);</span>
+        <span class="s2">boolean </span><span class="s1">running = </span><span class="s2">true</span><span class="s1">;</span>
+        <span class="s2">while </span><span class="s1">(running) {</span>
+            <span class="s2">try </span><span class="s1">{</span>
+                <span class="s1">String choice = readLine(buildMenu()).trim();</span>
+                <span class="s2">if </span><span class="s1">(choice.equals(exitChoice)) {</span>
+                    <span class="s1">running = !confirmExit();</span>
+                <span class="s1">} </span><span class="s2">else </span><span class="s1">{</span>
+                    <span class="s1">System.out.println(handleChoice(choice));</span>
+                <span class="s1">}</span>
+            <span class="s1">} </span><span class="s2">catch </span><span class="s1">(InputCancelledException e) {</span>
+                <span class="s0">// The user typed &quot;cancel&quot; in the middle of a task.</span>
+                <span class="s1">System.out.println(</span><span class="s3">&quot;Cancelled. No changes were made. Returning to the main menu.&quot;</span><span class="s1">);</span>
+            <span class="s1">} </span><span class="s2">catch </span><span class="s1">(InputEndedException e) {</span>
+                <span class="s0">// Keyboard input was closed, so there is nothing more to read.</span>
+                <span class="s1">System.out.println(System.lineSeparator() + </span><span class="s3">&quot;Input was closed. Exiting the program. Goodbye!&quot;</span><span class="s1">);</span>
+                <span class="s2">return </span><span class="s5">0</span><span class="s1">;</span>
+            <span class="s1">} </span><span class="s2">catch </span><span class="s1">(RuntimeException e) {</span>
+                <span class="s0">// Last line of defense: report the problem and keep the program running.</span>
+                <span class="s1">System.out.println(</span><span class="s3">&quot;Something unexpected went wrong (&quot; </span><span class="s1">+ e.getClass().getSimpleName()</span>
+                        <span class="s1">+ </span><span class="s3">&quot;). No data was lost. Returning to the main menu.&quot;</span><span class="s1">);</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;Goodbye! Thank you for using the Bakery Order Management System.&quot;</span><span class="s1">);</span>
+        <span class="s2">return </span><span class="s5">0</span><span class="s1">;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Builds the main menu text.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the menu, ending with the prompt for a choice</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String buildMenu() {</span>
+        <span class="s2">return </span><span class="s1">System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;========== BAKERY ORDER MANAGEMENT SYSTEM ==========&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  Orders in the system: &quot; </span><span class="s1">+ manager.getOrderCount() + System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  1. Load orders from a text file&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  2. Display all orders&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  3. Add a new order&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  4. Remove an order&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  5. Update an order&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  6. Daily Production Report (cakes to bake and expected revenue)&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;  7. Exit&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;====================================================&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;Choose an option (1-7): &quot;</span><span class="s1">;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Runs the task the user picked from the menu.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">choice what the user typed at the menu</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the message to show the user</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String handleChoice(String choice) {</span>
+        <span class="s2">switch </span><span class="s1">(choice) {</span>
+            <span class="s2">case </span><span class="s3">&quot;1&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">loadFileFromInput();</span>
+            <span class="s2">case </span><span class="s3">&quot;2&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">displayAllOrders();</span>
+            <span class="s2">case </span><span class="s3">&quot;3&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">addOrderFromInput();</span>
+            <span class="s2">case </span><span class="s3">&quot;4&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">removeOrderFromInput();</span>
+            <span class="s2">case </span><span class="s3">&quot;5&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">updateOrderFromInput();</span>
+            <span class="s2">case </span><span class="s3">&quot;6&quot;</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s1">reportFromInput();</span>
+            <span class="s2">default</span><span class="s1">:</span>
+                <span class="s2">return </span><span class="s3">&quot;</span><span class="s6">\&quot;</span><span class="s3">&quot; </span><span class="s1">+ shorten(choice) + </span><span class="s3">&quot;</span><span class="s6">\&quot; </span><span class="s3">is not a menu option. Please enter a number from 1 to 7.&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// MENU OPTION 1: LOAD FROM FILE</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for a file name and loads the orders in it.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a summary of what was loaded and any lines that were skipped</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String loadFileFromInput() {</span>
+        <span class="s1">System.out.println();</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;--- Load Orders From a Text File ---&quot;</span><span class="s1">);</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;Enter the file name or full path, for example:&quot;</span><span class="s1">);</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;   orders.txt&quot;</span><span class="s1">);</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;   C:</span><span class="s6">\\</span><span class="s3">Users</span><span class="s6">\\</span><span class="s3">you</span><span class="s6">\\</span><span class="s3">Desktop</span><span class="s6">\\</span><span class="s3">orders.txt   or   /Users/you/Desktop/orders.txt&quot;</span><span class="s1">);</span>
+        <span class="s1">String path = readLine(</span><span class="s3">&quot;File: &quot;</span><span class="s1">);</span>
+        <span class="s2">return </span><span class="s1">String.join(System.lineSeparator(), manager.loadFromFile(path));</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// MENU OPTION 2: DISPLAY ALL</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Builds a table of every order in the system.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the table, or a message if there are no orders</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String displayAllOrders() {</span>
+        <span class="s1">List&lt;Order&gt; all = manager.getAllOrders();</span>
+        <span class="s2">if </span><span class="s1">(all.isEmpty()) {</span>
+            <span class="s2">return </span><span class="s3">&quot;There are no orders in the system yet. Use option 1 to load a file or option 3 to add an order.&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s1">String rowFormat = </span><span class="s3">&quot;%-5s %-22s %-13s %-11s %4s %8s  %-10s  %-9s %9s  %s%n&quot;</span><span class="s1">;</span>
+        <span class="s1">StringBuilder sb = </span><span class="s2">new </span><span class="s1">StringBuilder();</span>
+        <span class="s1">sb.append(System.lineSeparator()).append(</span><span class="s3">&quot;ALL ORDERS (sorted by order ID)&quot;</span><span class="s1">).append(System.lineSeparator());</span>
+        <span class="s1">sb.append(String.format(rowFormat, </span><span class="s3">&quot;ID&quot;</span><span class="s1">, </span><span class="s3">&quot;Customer&quot;</span><span class="s1">, </span><span class="s3">&quot;Phone&quot;</span><span class="s1">, </span><span class="s3">&quot;Cake&quot;</span><span class="s1">, </span><span class="s3">&quot;Qty&quot;</span><span class="s1">, </span><span class="s3">&quot;Unit $&quot;</span><span class="s1">,</span>
+                <span class="s3">&quot;Pickup&quot;</span><span class="s1">, </span><span class="s3">&quot;Status&quot;</span><span class="s1">, </span><span class="s3">&quot;Total&quot;</span><span class="s1">, </span><span class="s3">&quot;Special Instructions&quot;</span><span class="s1">));</span>
+        <span class="s1">sb.append(</span><span class="s3">&quot;-&quot;</span><span class="s1">.repeat(</span><span class="s5">130</span><span class="s1">)).append(System.lineSeparator());</span>
+        <span class="s2">for </span><span class="s1">(Order order : all) {</span>
+            <span class="s1">sb.append(String.format(rowFormat,</span>
+                    <span class="s1">order.getOrderId(),</span>
+                    <span class="s1">shorten(order.getCustomerName(), </span><span class="s5">22</span><span class="s1">),</span>
+                    <span class="s1">order.getPhoneNumber(),</span>
+                    <span class="s1">order.getCakeType(),</span>
+                    <span class="s1">order.getQuantity(),</span>
+                    <span class="s1">String.format(</span><span class="s3">&quot;$%.2f&quot;</span><span class="s1">, order.getUnitPrice()),</span>
+                    <span class="s1">order.getPickupDate(),</span>
+                    <span class="s1">order.getStatus(),</span>
+                    <span class="s1">String.format(</span><span class="s3">&quot;$%,.2f&quot;</span><span class="s1">, manager.calculateTotal(order)),</span>
+                    <span class="s1">order.getSpecialInstructions().isEmpty() ? </span><span class="s3">&quot;-&quot; </span><span class="s1">: order.getSpecialInstructions()));</span>
+        <span class="s1">}</span>
+        <span class="s1">sb.append(</span><span class="s3">&quot;-&quot;</span><span class="s1">.repeat(</span><span class="s5">130</span><span class="s1">)).append(System.lineSeparator());</span>
+        <span class="s1">sb.append(</span><span class="s3">&quot;Total orders: &quot;</span><span class="s1">).append(all.size())</span>
+                <span class="s1">.append(</span><span class="s3">&quot;   (Total includes &quot;</span><span class="s1">).append(percentText()).append(</span><span class="s3">&quot; sales tax.)&quot;</span><span class="s1">);</span>
+        <span class="s2">return </span><span class="s1">sb.toString();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// MENU OPTION 3: ADD</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for each field of a new order, checking every value as it is typed.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a confirmation showing the new order, or the reasons it was not added</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String addOrderFromInput() {</span>
+        <span class="s1">System.out.println();</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;--- Add a New Order ---  (type </span><span class="s6">\&quot;</span><span class="s3">cancel</span><span class="s6">\&quot; </span><span class="s3">at any prompt to return to the menu)&quot;</span><span class="s1">);</span>
+        <span class="s2">int </span><span class="s1">orderId = promptOrderId(-</span><span class="s5">1</span><span class="s1">);</span>
+        <span class="s1">String name = promptName();</span>
+        <span class="s1">String phone = promptPhone();</span>
+        <span class="s1">String cakeType = promptCakeType();</span>
+        <span class="s2">int </span><span class="s1">quantity = promptQuantity();</span>
+        <span class="s2">double </span><span class="s1">price = promptPrice();</span>
+        <span class="s1">LocalDate pickupDate = promptPickupDate(manager.getToday());</span>
+        <span class="s1">String instructions = promptInstructions();</span>
+
+        <span class="s0">// New orders always start as &quot;not picked up yet&quot;.</span>
+        <span class="s1">Order order = </span><span class="s2">new </span><span class="s1">Order(orderId, name, phone, cakeType, quantity, price, pickupDate, </span><span class="s2">false</span><span class="s1">, instructions);</span>
+        <span class="s1">List&lt;String&gt; errors = manager.addOrder(order);</span>
+        <span class="s2">if </span><span class="s1">(!errors.isEmpty()) {</span>
+            <span class="s2">return </span><span class="s3">&quot;The order was NOT added:&quot; </span><span class="s1">+ System.lineSeparator() + bulletList(errors);</span>
+        <span class="s1">}</span>
+        <span class="s1">Order saved = manager.findOrderById(orderId).orElse(order);</span>
+        <span class="s2">return </span><span class="s1">System.lineSeparator() + </span><span class="s3">&quot;Order #&quot; </span><span class="s1">+ orderId + </span><span class="s3">&quot; was added successfully:&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ formatOrderDetails(saved) + System.lineSeparator()</span>
+                <span class="s1">+ </span><span class="s3">&quot;The system now holds &quot; </span><span class="s1">+ manager.getOrderCount() + </span><span class="s3">&quot; orders.&quot;</span><span class="s1">;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// MENU OPTION 4: REMOVE</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for an order ID, shows the order and removes it after the user confirms.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a message saying whether the order was removed</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String removeOrderFromInput() {</span>
+        <span class="s2">if </span><span class="s1">(manager.getOrderCount() == </span><span class="s5">0</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s3">&quot;There are no orders to remove.&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s1">System.out.println();</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;--- Remove an Order ---  (type </span><span class="s6">\&quot;</span><span class="s3">cancel</span><span class="s6">\&quot; </span><span class="s3">to return to the menu)&quot;</span><span class="s1">);</span>
+        <span class="s2">int </span><span class="s1">orderId = readInt(</span><span class="s3">&quot;Enter the order ID to remove: &quot;</span><span class="s1">);</span>
+        <span class="s1">Optional&lt;Order&gt; found = manager.findOrderById(orderId);</span>
+        <span class="s2">if </span><span class="s1">(found.isEmpty()) {</span>
+            <span class="s2">return </span><span class="s3">&quot;No order #&quot; </span><span class="s1">+ orderId + </span><span class="s3">&quot; was found. Nothing was removed. (Use option 2 to see all order IDs.)&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s1">System.out.println(formatOrderDetails(found.get()));</span>
+        <span class="s2">if </span><span class="s1">(!promptYesNo(</span><span class="s3">&quot;Remove this order? (Y/N): &quot;</span><span class="s1">)) {</span>
+            <span class="s2">return </span><span class="s3">&quot;Removal cancelled. Order #&quot; </span><span class="s1">+ orderId + </span><span class="s3">&quot; was kept.&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s2">if </span><span class="s1">(manager.removeOrder(orderId)) {</span>
+            <span class="s2">return </span><span class="s3">&quot;Order #&quot; </span><span class="s1">+ orderId + </span><span class="s3">&quot; was removed. &quot; </span><span class="s1">+ manager.getOrderCount() + </span><span class="s3">&quot; order(s) remain.&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s3">&quot;Order #&quot; </span><span class="s1">+ orderId + </span><span class="s3">&quot; could not be removed.&quot;</span><span class="s1">;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// MENU OPTION 5: UPDATE</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for an order ID, then lets the user change any of its 9 fields,</span>
+     <span class="s0">* one at a time, until they choose Done.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a summary of the order after all changes</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String updateOrderFromInput() {</span>
+        <span class="s2">if </span><span class="s1">(manager.getOrderCount() == </span><span class="s5">0</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s3">&quot;There are no orders to update.&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s1">System.out.println();</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;--- Update an Order ---  (type </span><span class="s6">\&quot;</span><span class="s3">cancel</span><span class="s6">\&quot; </span><span class="s3">to return to the menu)&quot;</span><span class="s1">);</span>
+        <span class="s2">int </span><span class="s1">orderId = readInt(</span><span class="s3">&quot;Enter the order ID to update: &quot;</span><span class="s1">);</span>
+        <span class="s1">Optional&lt;Order&gt; found = manager.findOrderById(orderId);</span>
+        <span class="s2">if </span><span class="s1">(found.isEmpty()) {</span>
+            <span class="s2">return </span><span class="s3">&quot;No order #&quot; </span><span class="s1">+ orderId + </span><span class="s3">&quot; was found. (Use option 2 to see all order IDs.)&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s1">Order current = found.get();</span>
+        <span class="s2">int </span><span class="s1">changes = </span><span class="s5">0</span><span class="s1">;</span>
+
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">System.out.println();</span>
+            <span class="s1">System.out.println(formatOrderDetails(current));</span>
+            <span class="s1">System.out.println(</span><span class="s3">&quot;  0. Done updating&quot;</span><span class="s1">);</span>
+            <span class="s2">int </span><span class="s1">field = readInt(</span><span class="s3">&quot;Which field do you want to change? (0-9): &quot;</span><span class="s1">);</span>
+            <span class="s2">if </span><span class="s1">(field == </span><span class="s5">0</span><span class="s1">) {</span>
+                <span class="s2">break</span><span class="s1">;</span>
+            <span class="s1">}</span>
+            <span class="s2">if </span><span class="s1">(field &lt; </span><span class="s5">0 </span><span class="s1">|| field &gt; </span><span class="s5">9</span><span class="s1">) {</span>
+                <span class="s1">System.out.println(</span><span class="s3">&quot;Please enter a number from 0 to 9.&quot;</span><span class="s1">);</span>
+                <span class="s2">continue</span><span class="s1">;</span>
+            <span class="s1">}</span>
+            <span class="s0">// Work on a copy; the stored order only changes if the manager accepts the edit.</span>
+            <span class="s1">Order edited = current.copy();</span>
+            <span class="s1">String fieldName = applyFieldChange(edited, field, current);</span>
+            <span class="s1">List&lt;String&gt; errors = manager.updateOrder(current.getOrderId(), edited);</span>
+            <span class="s2">if </span><span class="s1">(errors.isEmpty()) {</span>
+                <span class="s1">current = manager.findOrderById(edited.getOrderId()).orElse(edited);</span>
+                <span class="s1">changes++;</span>
+                <span class="s1">System.out.println(</span><span class="s3">&quot;Saved. &quot; </span><span class="s1">+ fieldName + </span><span class="s3">&quot; for order #&quot; </span><span class="s1">+ current.getOrderId() + </span><span class="s3">&quot; was updated.&quot;</span><span class="s1">);</span>
+            <span class="s1">} </span><span class="s2">else </span><span class="s1">{</span>
+                <span class="s1">System.out.println(</span><span class="s3">&quot;That change was NOT saved:&quot; </span><span class="s1">+ System.lineSeparator() + bulletList(errors));</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s3">&quot;Finished updating. &quot; </span><span class="s1">+ changes + </span><span class="s3">&quot; change(s) saved.&quot; </span><span class="s1">+ System.lineSeparator()</span>
+                <span class="s1">+ formatOrderDetails(current);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for a new value for one field and puts it into the edited order.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">edited  the copy of the order being edited</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">field   the field number from the update menu (1-9)</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">current the order as it is now stored (used for rules such as &quot;keep the same ID&quot;)</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the field name that was changed</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String applyFieldChange(Order edited, </span><span class="s2">int </span><span class="s1">field, Order current) {</span>
+        <span class="s2">switch </span><span class="s1">(field) {</span>
+            <span class="s2">case </span><span class="s5">1</span><span class="s1">:</span>
+                <span class="s1">edited.setOrderId(promptOrderId(current.getOrderId()));</span>
+                <span class="s2">return </span><span class="s3">&quot;Order ID&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s5">2</span><span class="s1">:</span>
+                <span class="s1">edited.setCustomerName(promptName());</span>
+                <span class="s2">return </span><span class="s3">&quot;Customer name&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s5">3</span><span class="s1">:</span>
+                <span class="s1">edited.setPhoneNumber(promptPhone());</span>
+                <span class="s2">return </span><span class="s3">&quot;Phone number&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s5">4</span><span class="s1">:</span>
+                <span class="s1">edited.setCakeType(promptCakeType());</span>
+                <span class="s2">return </span><span class="s3">&quot;Cake type&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s5">5</span><span class="s1">:</span>
+                <span class="s1">edited.setQuantity(promptQuantity());</span>
+                <span class="s2">return </span><span class="s3">&quot;Quantity&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s5">6</span><span class="s1">:</span>
+                <span class="s1">edited.setUnitPrice(promptPrice());</span>
+                <span class="s2">return </span><span class="s3">&quot;Unit price&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s5">7</span><span class="s1">:</span>
+                <span class="s0">// An order whose day has passed may keep its old date; otherwise the date must be today or later.</span>
+                <span class="s1">LocalDate today = manager.getToday();</span>
+                <span class="s1">LocalDate earliest = current.getPickupDate().isBefore(today) ? current.getPickupDate() : today;</span>
+                <span class="s1">edited.setPickupDate(promptPickupDate(earliest));</span>
+                <span class="s2">return </span><span class="s3">&quot;Pickup date&quot;</span><span class="s1">;</span>
+            <span class="s2">case </span><span class="s5">8</span><span class="s1">:</span>
+                <span class="s1">edited.setPickedUp(promptYesNo(</span><span class="s3">&quot;Has the customer picked up this order? (Y/N): &quot;</span><span class="s1">));</span>
+                <span class="s2">return </span><span class="s3">&quot;Picked up&quot;</span><span class="s1">;</span>
+            <span class="s2">default</span><span class="s1">:</span>
+                <span class="s1">edited.setSpecialInstructions(promptInstructions());</span>
+                <span class="s2">return </span><span class="s3">&quot;Special instructions&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// MENU OPTION 6: CUSTOM ACTION - DAILY PRODUCTION REPORT</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for a pickup date and shows the Daily Production Report for it.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the formatted report</span>
+     <span class="s0">*/</span>
+    <span class="s2">public </span><span class="s1">String reportFromInput() {</span>
+        <span class="s1">System.out.println();</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;--- Daily Production Report ---  (type </span><span class="s6">\&quot;</span><span class="s3">cancel</span><span class="s6">\&quot; </span><span class="s3">to return to the menu)&quot;</span><span class="s1">);</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;Shows how many cakes of each type to bake and the expected revenue&quot;</span><span class="s1">);</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;for orders due on a date that have NOT been picked up yet.&quot;</span><span class="s1">);</span>
+        <span class="s1">LocalDate date = readDate(</span><span class="s3">&quot;Enter the pickup date (YYYY-MM-DD or MM/DD/YYYY): &quot;</span><span class="s1">);</span>
+        <span class="s1">DailyReport report = manager.generateDailyReport(date);</span>
+        <span class="s2">return </span><span class="s1">report.format();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// MENU OPTION 7: EXIT</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks the user to confirm before the program ends.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">true if the user really wants to exit</span>
+     <span class="s0">*/</span>
+    <span class="s2">private boolean </span><span class="s1">confirmExit() {</span>
+        <span class="s1">System.out.println(</span><span class="s3">&quot;Note: in Phase 1, orders are kept in memory only and are cleared when the program ends.&quot;</span><span class="s1">);</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s2">return </span><span class="s1">promptYesNo(</span><span class="s3">&quot;Are you sure you want to exit? (Y/N): &quot;</span><span class="s1">);</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(InputCancelledException e) {</span>
+            <span class="s2">return false</span><span class="s1">; </span><span class="s0">// &quot;cancel&quot; here means &quot;don't exit&quot;</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// FIELD PROMPTS: each one keeps asking until the value is valid</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for an order ID that is 4 digits and not used by another order.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">allowedExistingId an ID that may be reused (the order's own ID when updating), or -1</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a valid, unused order ID</span>
+     <span class="s0">*/</span>
+    <span class="s2">private int </span><span class="s1">promptOrderId(</span><span class="s2">int </span><span class="s1">allowedExistingId) {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s2">int </span><span class="s1">id = readInt(</span><span class="s3">&quot;Order ID (1000-9999): &quot;</span><span class="s1">);</span>
+            <span class="s2">if </span><span class="s1">(!validator.isValidOrderId(id)) {</span>
+                <span class="s1">System.out.println(validator.ruleFor(</span><span class="s3">&quot;orderId&quot;</span><span class="s1">));</span>
+            <span class="s1">} </span><span class="s2">else if </span><span class="s1">(id != allowedExistingId &amp;&amp; manager.isIdTaken(id)) {</span>
+                <span class="s1">System.out.println(</span><span class="s3">&quot;Order #&quot; </span><span class="s1">+ id + </span><span class="s3">&quot; already exists. Please choose a different ID.&quot;</span><span class="s1">);</span>
+            <span class="s1">} </span><span class="s2">else </span><span class="s1">{</span>
+                <span class="s2">return </span><span class="s1">id;</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for a customer name.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a valid customer name with extra spaces removed</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String promptName() {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">String name = readCancellable(</span><span class="s3">&quot;Customer name: &quot;</span><span class="s1">).trim().replaceAll(</span><span class="s3">&quot;</span><span class="s6">\\</span><span class="s3">s+&quot;</span><span class="s1">, </span><span class="s3">&quot; &quot;</span><span class="s1">);</span>
+            <span class="s2">if </span><span class="s1">(validator.isValidName(name)) {</span>
+                <span class="s2">return </span><span class="s1">name;</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(validator.ruleFor(</span><span class="s3">&quot;name&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for a phone number.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the phone number in 407-555-0142 format</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String promptPhone() {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">Optional&lt;String&gt; phone = validator.formatPhone(readCancellable(</span><span class="s3">&quot;Phone number (10 digits): &quot;</span><span class="s1">));</span>
+            <span class="s2">if </span><span class="s1">(phone.isPresent()) {</span>
+                <span class="s2">return </span><span class="s1">phone.get();</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(validator.ruleFor(</span><span class="s3">&quot;phone&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Shows the cake types as a numbered list and asks the user to pick one</span>
+     <span class="s0">* by number or by name.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a valid cake type</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String promptCakeType() {</span>
+        <span class="s1">List&lt;String&gt; types = validator.getValidCakeTypes();</span>
+        <span class="s1">StringBuilder options = </span><span class="s2">new </span><span class="s1">StringBuilder(</span><span class="s3">&quot;Cake types: &quot;</span><span class="s1">);</span>
+        <span class="s2">for </span><span class="s1">(</span><span class="s2">int </span><span class="s1">i = </span><span class="s5">0</span><span class="s1">; i &lt; types.size(); i++) {</span>
+            <span class="s1">options.append(i + </span><span class="s5">1</span><span class="s1">).append(</span><span class="s3">&quot;. &quot;</span><span class="s1">).append(types.get(i)).append(</span><span class="s3">&quot;   &quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+        <span class="s1">System.out.println(options.toString().trim());</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">String input = readCancellable(</span><span class="s3">&quot;Cake type (number or name): &quot;</span><span class="s1">).trim();</span>
+            <span class="s0">// Accept the menu number...</span>
+            <span class="s2">if </span><span class="s1">(input.matches(</span><span class="s3">&quot;</span><span class="s6">\\</span><span class="s3">d{1,2}&quot;</span><span class="s1">)) {</span>
+                <span class="s2">int </span><span class="s1">number = Integer.parseInt(input);</span>
+                <span class="s2">if </span><span class="s1">(number &gt;= </span><span class="s5">1 </span><span class="s1">&amp;&amp; number &lt;= types.size()) {</span>
+                    <span class="s2">return </span><span class="s1">types.get(number - </span><span class="s5">1</span><span class="s1">);</span>
+                <span class="s1">}</span>
+            <span class="s1">}</span>
+            <span class="s0">// ...or the name, in any upper/lower case.</span>
+            <span class="s1">Optional&lt;String&gt; match = validator.matchCakeType(input);</span>
+            <span class="s2">if </span><span class="s1">(match.isPresent()) {</span>
+                <span class="s2">return </span><span class="s1">match.get();</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(</span><span class="s3">&quot;Please enter 1-&quot; </span><span class="s1">+ types.size() + </span><span class="s3">&quot; or a cake name. &quot; </span><span class="s1">+ validator.ruleFor(</span><span class="s3">&quot;cakeType&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for the number of cakes.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a quantity from 1 to 50</span>
+     <span class="s0">*/</span>
+    <span class="s2">private int </span><span class="s1">promptQuantity() {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s2">int </span><span class="s1">quantity = readInt(</span><span class="s3">&quot;Quantity (1-50): &quot;</span><span class="s1">);</span>
+            <span class="s2">if </span><span class="s1">(validator.isValidQuantity(quantity)) {</span>
+                <span class="s2">return </span><span class="s1">quantity;</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(validator.ruleFor(</span><span class="s3">&quot;quantity&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for the price of one cake.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a valid unit price</span>
+     <span class="s0">*/</span>
+    <span class="s2">private double </span><span class="s1">promptPrice() {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s2">double </span><span class="s1">price = readDouble(</span><span class="s3">&quot;Unit price per cake (e.g. 28.00): $&quot;</span><span class="s1">);</span>
+            <span class="s2">if </span><span class="s1">(validator.isValidPrice(price)) {</span>
+                <span class="s2">return </span><span class="s1">price;</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(validator.ruleFor(</span><span class="s3">&quot;price&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for a pickup date that is not before the earliest allowed date and</span>
+     <span class="s0">* not more than 2 years ahead.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">earliestAllowed the first date that is accepted (normally today)</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">a valid pickup date</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">LocalDate promptPickupDate(LocalDate earliestAllowed) {</span>
+        <span class="s1">LocalDate today = manager.getToday();</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">LocalDate date = readDate(</span><span class="s3">&quot;Pickup date (YYYY-MM-DD or MM/DD/YYYY): &quot;</span><span class="s1">);</span>
+            <span class="s2">if </span><span class="s1">(validator.isValidPickupDate(date, earliestAllowed, today)) {</span>
+                <span class="s2">return </span><span class="s1">date;</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(</span><span class="s3">&quot;Pickup date must be from &quot; </span><span class="s1">+ earliestAllowed + </span><span class="s3">&quot; to &quot; </span><span class="s1">+ today.plusYears(</span><span class="s5">2</span><span class="s1">) + </span><span class="s3">&quot;.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks for optional special instructions.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the instructions, or an empty string for none</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String promptInstructions() {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">String text = readCancellable(</span><span class="s3">&quot;Special instructions (press Enter for none): &quot;</span><span class="s1">).trim();</span>
+            <span class="s2">if </span><span class="s1">(validator.isValidInstructions(text)) {</span>
+                <span class="s2">return </span><span class="s1">text;</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(validator.ruleFor(</span><span class="s3">&quot;instructions&quot;</span><span class="s1">));</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Asks a yes/no question.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">prompt the question to show</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">true for yes, false for no</span>
+     <span class="s0">*/</span>
+    <span class="s2">private boolean </span><span class="s1">promptYesNo(String prompt) {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">String answer = readCancellable(prompt).trim().toLowerCase();</span>
+            <span class="s2">if </span><span class="s1">(answer.equals(</span><span class="s3">&quot;y&quot;</span><span class="s1">) || answer.equals(</span><span class="s3">&quot;yes&quot;</span><span class="s1">)) {</span>
+                <span class="s2">return true</span><span class="s1">;</span>
+            <span class="s1">}</span>
+            <span class="s2">if </span><span class="s1">(answer.equals(</span><span class="s3">&quot;n&quot;</span><span class="s1">) || answer.equals(</span><span class="s3">&quot;no&quot;</span><span class="s1">)) {</span>
+                <span class="s2">return false</span><span class="s1">;</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(</span><span class="s3">&quot;Please type Y for yes or N for no.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// LOW-LEVEL INPUT HELPERS</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Shows a prompt and reads one line of input.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">prompt the text to show</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the line the user typed</span>
+     <span class="s0">* </span><span class="s4">@throws </span><span class="s0">InputEndedException if keyboard input has been closed</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String readLine(String prompt) {</span>
+        <span class="s1">System.out.print(prompt);</span>
+        <span class="s2">try </span><span class="s1">{</span>
+            <span class="s2">return </span><span class="s1">scanner.nextLine();</span>
+        <span class="s1">} </span><span class="s2">catch </span><span class="s1">(NoSuchElementException | IllegalStateException e) {</span>
+            <span class="s2">throw new </span><span class="s1">InputEndedException();</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Reads a line, but lets the user type &quot;cancel&quot; to go back to the menu.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">prompt the text to show</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the line the user typed</span>
+     <span class="s0">* </span><span class="s4">@throws </span><span class="s0">InputCancelledException if the user typed &quot;cancel&quot;</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String readCancellable(String prompt) {</span>
+        <span class="s1">String input = readLine(prompt);</span>
+        <span class="s2">if </span><span class="s1">(input.trim().equalsIgnoreCase(cancelWord)) {</span>
+            <span class="s2">throw new </span><span class="s1">InputCancelledException();</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">input;</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Keeps asking until the user types a whole number. Letters, decimals,</span>
+     <span class="s0">* blank input and numbers too large for an int are all rejected.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">prompt the text to show</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the whole number entered</span>
+     <span class="s0">*/</span>
+    <span class="s2">private int </span><span class="s1">readInt(String prompt) {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">String input = readCancellable(prompt).trim();</span>
+            <span class="s2">try </span><span class="s1">{</span>
+                <span class="s2">return </span><span class="s1">Integer.parseInt(input);</span>
+            <span class="s1">} </span><span class="s2">catch </span><span class="s1">(NumberFormatException e) {</span>
+                <span class="s1">System.out.println(</span><span class="s3">&quot;</span><span class="s6">\&quot;</span><span class="s3">&quot; </span><span class="s1">+ shorten(input) + </span><span class="s3">&quot;</span><span class="s6">\&quot; </span><span class="s3">is not a whole number. Please type digits only, e.g. 1004.&quot;</span><span class="s1">);</span>
+            <span class="s1">}</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Keeps asking until the user types a plain dollar amount such as 28 or</span>
+     <span class="s0">* 28.50. &quot;NaN&quot;, &quot;Infinity&quot;, &quot;1e3&quot; and negative numbers are rejected.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">prompt the text to show</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the amount entered</span>
+     <span class="s0">*/</span>
+    <span class="s2">private double </span><span class="s1">readDouble(String prompt) {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">String input = readCancellable(prompt).trim();</span>
+            <span class="s2">if </span><span class="s1">(input.startsWith(</span><span class="s3">&quot;$&quot;</span><span class="s1">)) {</span>
+                <span class="s1">input = input.substring(</span><span class="s5">1</span><span class="s1">).trim();</span>
+            <span class="s1">}</span>
+            <span class="s2">if </span><span class="s1">(input.matches(</span><span class="s3">&quot;</span><span class="s6">\\</span><span class="s3">d{1,7}(</span><span class="s6">\\</span><span class="s3">.</span><span class="s6">\\</span><span class="s3">d{1,2})?&quot;</span><span class="s1">)) {</span>
+                <span class="s2">return </span><span class="s1">Double.parseDouble(input);</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(</span><span class="s3">&quot;</span><span class="s6">\&quot;</span><span class="s3">&quot; </span><span class="s1">+ shorten(input) + </span><span class="s3">&quot;</span><span class="s6">\&quot; </span><span class="s3">is not a dollar amount. Please type a number like 28 or 28.50.&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Keeps asking until the user types a real date.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">prompt the text to show</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the date entered</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">LocalDate readDate(String prompt) {</span>
+        <span class="s2">while </span><span class="s1">(</span><span class="s2">true</span><span class="s1">) {</span>
+            <span class="s1">String input = readCancellable(prompt).trim();</span>
+            <span class="s1">Optional&lt;LocalDate&gt; date = validator.parseDate(input);</span>
+            <span class="s2">if </span><span class="s1">(date.isPresent()) {</span>
+                <span class="s2">return </span><span class="s1">date.get();</span>
+            <span class="s1">}</span>
+            <span class="s1">System.out.println(</span><span class="s3">&quot;</span><span class="s6">\&quot;</span><span class="s3">&quot; </span><span class="s1">+ shorten(input) + </span><span class="s3">&quot;</span><span class="s6">\&quot; </span><span class="s3">is not a real date. Use YYYY-MM-DD (2027-02-13) or MM/DD/YYYY (2/13/2027).&quot;</span><span class="s1">);</span>
+        <span class="s1">}</span>
+    <span class="s1">}</span>
+
+    <span class="s0">// ===============================================================</span>
+    <span class="s0">// FORMATTING HELPERS</span>
+    <span class="s0">// ===============================================================</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Lists every field of an order with the number used in the update menu.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">order the order to show</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the order as numbered, multi-line text</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String formatOrderDetails(Order order) {</span>
+        <span class="s1">String nl = System.lineSeparator();</span>
+        <span class="s2">return </span><span class="s3">&quot;Order #&quot; </span><span class="s1">+ order.getOrderId() + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  1. Order ID:             &quot; </span><span class="s1">+ order.getOrderId() + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  2. Customer name:        &quot; </span><span class="s1">+ order.getCustomerName() + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  3. Phone number:         &quot; </span><span class="s1">+ order.getPhoneNumber() + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  4. Cake type:            &quot; </span><span class="s1">+ order.getCakeType() + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  5. Quantity:             &quot; </span><span class="s1">+ order.getQuantity() + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  6. Unit price:           &quot; </span><span class="s1">+ String.format(</span><span class="s3">&quot;$%.2f&quot;</span><span class="s1">, order.getUnitPrice()) + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  7. Pickup date:          &quot; </span><span class="s1">+ order.getPickupDate() + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  8. Picked up:            &quot; </span><span class="s1">+ (order.isPickedUp() ? </span><span class="s3">&quot;Yes&quot; </span><span class="s1">: </span><span class="s3">&quot;No&quot;</span><span class="s1">) + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;  9. Special instructions: &quot;</span>
+                <span class="s1">+ (order.getSpecialInstructions().isEmpty() ? </span><span class="s3">&quot;(none)&quot; </span><span class="s1">: order.getSpecialInstructions()) + nl</span>
+                <span class="s1">+ </span><span class="s3">&quot;     Order total (incl. &quot; </span><span class="s1">+ percentText() + </span><span class="s3">&quot; tax): &quot;</span>
+                <span class="s1">+ String.format(</span><span class="s3">&quot;$%,.2f&quot;</span><span class="s1">, manager.calculateTotal(order));</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Turns a list of messages into indented bullet lines.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">messages the messages to list</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">one &quot;  - message&quot; line per message</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String bulletList(List&lt;String&gt; messages) {</span>
+        <span class="s1">StringBuilder sb = </span><span class="s2">new </span><span class="s1">StringBuilder();</span>
+        <span class="s2">for </span><span class="s1">(String message : messages) {</span>
+            <span class="s2">if </span><span class="s1">(sb.length() &gt; </span><span class="s5">0</span><span class="s1">) {</span>
+                <span class="s1">sb.append(System.lineSeparator());</span>
+            <span class="s1">}</span>
+            <span class="s1">sb.append(</span><span class="s3">&quot;  - &quot;</span><span class="s1">).append(message);</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">sb.toString();</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/** </span><span class="s4">@return </span><span class="s0">the tax rate as text, e.g. &quot;7%&quot; */</span>
+    <span class="s2">private </span><span class="s1">String percentText() {</span>
+        <span class="s2">return </span><span class="s1">String.format(</span><span class="s3">&quot;%.0f%%&quot;</span><span class="s1">, manager.getTaxRate() * </span><span class="s5">100</span><span class="s1">);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Shortens what the user typed so error messages stay readable.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">text the text to shorten</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the text cut to 30 characters</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String shorten(String text) {</span>
+        <span class="s2">return </span><span class="s1">shorten(text, </span><span class="s5">30</span><span class="s1">);</span>
+    <span class="s1">}</span>
+
+    <span class="s0">/**</span>
+     <span class="s0">* Shortens text to a maximum length, adding &quot;...&quot; if it was cut.</span>
+     <span class="s0">*</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">text      the text to shorten</span>
+     <span class="s0">* </span><span class="s4">@param </span><span class="s0">maxLength the longest allowed length</span>
+     <span class="s0">* </span><span class="s4">@return </span><span class="s0">the shortened text</span>
+     <span class="s0">*/</span>
+    <span class="s2">private </span><span class="s1">String shorten(String text, </span><span class="s2">int </span><span class="s1">maxLength) {</span>
+        <span class="s2">if </span><span class="s1">(text == </span><span class="s2">null</span><span class="s1">) {</span>
+            <span class="s2">return </span><span class="s3">&quot;&quot;</span><span class="s1">;</span>
+        <span class="s1">}</span>
+        <span class="s2">return </span><span class="s1">text.length() &lt;= maxLength ? text : text.substring(</span><span class="s5">0</span><span class="s1">, maxLength - </span><span class="s5">3</span><span class="s1">) + </span><span class="s3">&quot;...&quot;</span><span class="s1">;</span>
+    <span class="s1">}</span>
+<span class="s1">}</span>
+</pre>
+</body>
+</html>

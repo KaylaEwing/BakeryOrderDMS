@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
  * Class:   OrderValidator
  *
  * Purpose: Holds every data rule for an Order in one place. Both the file
@@ -239,6 +239,89 @@ public class OrderValidator {
                 return Optional.empty();
             }
         }
+    }
+
+    /**
+     * Converts text to a whole number. Letters, decimals, blanks and numbers
+     * too large for an int are rejected instead of throwing an exception.
+     *
+     * @param text the text to convert, e.g. "1004"
+     * @return the number, or an empty Optional if the text is not a whole number
+     */
+    public Optional<Integer> parseWholeNumber(String text) {
+        if (text == null) {
+            return Optional.empty();
+        }
+        String trimmed = text.trim();
+        // At most 10 digits so the check below is the only way parseInt can fail.
+        if (!trimmed.matches("[+-]?\\d{1,10}")) {
+            return Optional.empty();
+        }
+        try {
+            return Optional.of(Integer.parseInt(trimmed));
+        } catch (NumberFormatException tooLarge) {
+            return Optional.empty(); // e.g. 9999999999 is bigger than an int can hold
+        }
+    }
+
+    /**
+     * Converts text such as "28", "28.50" or "$28.50" to a dollar amount.
+     * Words, negative numbers, "NaN", "Infinity" and "1e3" are rejected.
+     * (Whether the amount is allowed is checked separately by isValidPrice.)
+     *
+     * @param text the text to convert
+     * @return the amount, or an empty Optional if the text is not a plain dollar amount
+     */
+    public Optional<Double> parseMoney(String text) {
+        if (text == null) {
+            return Optional.empty();
+        }
+        String trimmed = text.trim();
+        if (trimmed.startsWith("$")) {
+            trimmed = trimmed.substring(1).trim();
+        }
+        if (!trimmed.matches("\\d{1,7}(\\.\\d+)?")) {
+            return Optional.empty();
+        }
+        return Optional.of(Double.parseDouble(trimmed));
+    }
+
+    /**
+     * Converts a yes/no answer. Accepts y, yes, true, n, no or false in any case.
+     *
+     * @param text the text to convert
+     * @return true for yes, false for no, or an empty Optional for anything else
+     */
+    public Optional<Boolean> parseYesNo(String text) {
+        if (text == null) {
+            return Optional.empty();
+        }
+        String answer = text.trim().toLowerCase();
+        if (answer.equals("y") || answer.equals("yes") || answer.equals("true")) {
+            return Optional.of(true);
+        }
+        if (answer.equals("n") || answer.equals("no") || answer.equals("false")) {
+            return Optional.of(false);
+        }
+        return Optional.empty();
+    }
+
+    /**
+     * Turns the user's cake choice into a cake type. The user may type the
+     * menu number shown on screen (1-4) or the cake's name.
+     *
+     * @param choice the number or name typed
+     * @return the cake type, or an empty Optional if the choice is not valid
+     */
+    public Optional<String> matchCakeChoice(String choice) {
+        Optional<Integer> number = parseWholeNumber(choice);
+        if (number.isPresent()) {
+            int n = number.get();
+            return (n >= 1 && n <= validCakeTypes.size())
+                    ? Optional.of(validCakeTypes.get(n - 1))
+                    : Optional.empty();
+        }
+        return matchCakeType(choice);
     }
 
     /**

@@ -1,7 +1,7 @@
 /*
- * Name:   Kayla Ewing
+ * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
  * Class:   BakeryApp
  *
  * Purpose: The presentation layer and starting point of the Bakery Order
@@ -57,7 +57,7 @@ public class BakeryApp {
      */
     public static void main(String[] args) {
         OrderValidator validator = new OrderValidator(List.of("Chocolate", "Vanilla", "Red Velvet", "Carrot"));
-        OrderFileLoader loader = new OrderFileLoader(",");
+        OrderFileLoader loader = new OrderFileLoader(",", validator);
         OrderManager manager = new OrderManager(validator, loader, 0.07);
         BakeryApp app = new BakeryApp(manager, new Scanner(System.in));
         app.run();
@@ -94,7 +94,7 @@ public class BakeryApp {
                 }
             } catch (InputCancelledException e) {
                 // The user typed "cancel" in the middle of a task.
-                System.out.println("Cancelled. No changes were made. Returning to the main menu.");
+                System.out.println("Cancelled. Anything not yet saved was discarded. Returning to the main menu.");
             } catch (InputEndedException e) {
                 // Keyboard input was closed, so there is nothing more to read.
                 System.out.println(System.lineSeparator() + "Input was closed. Exiting the program. Goodbye!");
@@ -233,15 +233,17 @@ public class BakeryApp {
         LocalDate pickupDate = promptPickupDate(manager.getToday());
         String instructions = promptInstructions();
 
-        // New orders always start as "not picked up yet".
-        Order order = new Order(orderId, name, phone, cakeType, quantity, price, pickupDate, false, instructions);
-        List<String> errors = manager.addOrder(order);
+        // All input has been collected; now pass it to the manager, which checks it again and stores it.
+        List<String> errors = manager.addOrder(orderId, name, phone, cakeType, quantity, price, pickupDate, instructions);
         if (!errors.isEmpty()) {
             return "The order was NOT added:" + System.lineSeparator() + bulletList(errors);
         }
-        Order saved = manager.findOrderById(orderId).orElse(order);
+        Optional<Order> saved = manager.findOrderById(orderId);
+        if (saved.isEmpty()) {
+            return "The order could not be found after saving. Please try again.";
+        }
         return System.lineSeparator() + "Order #" + orderId + " was added successfully:" + System.lineSeparator()
-                + formatOrderDetails(saved) + System.lineSeparator()
+                + formatOrderDetails(saved.get()) + System.lineSeparator()
                 + "The system now holds " + manager.getOrderCount() + " orders.";
     }
 
@@ -290,7 +292,7 @@ public class BakeryApp {
             return "There are no orders to update.";
         }
         System.out.println();
-        System.out.println("--- Update an Order ---  (type \"cancel\" to return to the menu)");
+        System.out.println("--- Update an Order ---  (type \"cancel\" to return to the menu; saved changes are kept)");
         int orderId = readInt("Enter the order ID to update: ");
         Optional<Order> found = manager.findOrderById(orderId);
         if (found.isEmpty()) {
@@ -311,16 +313,26 @@ public class BakeryApp {
                 System.out.println("Please enter a number from 0 to 9.");
                 continue;
             }
-            // Work on a copy; the stored order only changes if the manager accepts the edit.
-            Order edited = current.copy();
-            String fieldName = applyFieldChange(edited, field, current);
-            List<String> errors = manager.updateOrder(current.getOrderId(), edited);
-            if (errors.isEmpty()) {
-                current = manager.findOrderById(edited.getOrderId()).orElse(edited);
-                changes++;
-                System.out.println("Saved. " + fieldName + " for order #" + current.getOrderId() + " was updated.");
-            } else {
-                System.out.println("That change was NOT saved:" + System.lineSeparator() + bulletList(errors));
+            String fieldName = manager.describeField(field);
+            // Keep asking for this field until the manager accepts the value (or the user types cancel).
+            while (true) {
+                String newValue = readFieldValue(field);
+                List<String> errors = manager.updateField(current.getOrderId(), field, newValue);
+                if (errors.isEmpty()) {
+                    // If the ID itself was changed, look the order up by its new ID.
+                    int idNow = (field == 1)
+                            ? validator.parseWholeNumber(newValue).orElse(current.getOrderId())
+                            : current.getOrderId();
+                    Optional<Order> refreshed = manager.findOrderById(idNow);
+                    if (refreshed.isPresent()) {
+                        current = refreshed.get();
+                    }
+                    changes++;
+                    System.out.println("Saved. " + fieldName + " for order #" + current.getOrderId() + " was updated.");
+                    break;
+                }
+                System.out.println("That value was NOT saved:" + System.lineSeparator() + bulletList(errors));
+                System.out.println("Please try again, or type \"cancel\" to return to the menu.");
             }
         }
         return "Finished updating. " + changes + " change(s) saved." + System.lineSeparator()
@@ -328,45 +340,34 @@ public class BakeryApp {
     }
 
     /**
-     * Asks for a new value for one field and puts it into the edited order.
+     * Shows the right prompt for a field and returns exactly what the user
+     * typed. The value is checked by OrderManager.updateField(), not here,
+     * so the same rules apply whether the value comes from a person or a test.
      *
-     * @param edited  the copy of the order being edited
-     * @param field   the field number from the update menu (1-9)
-     * @param current the order as it is now stored (used for rules such as "keep the same ID")
-     * @return the field name that was changed
+     * @param field the field number from the update menu (1-9)
+     * @return the text the user typed
      */
-    private String applyFieldChange(Order edited, int field, Order current) {
+    private String readFieldValue(int field) {
         switch (field) {
             case 1:
-                edited.setOrderId(promptOrderId(current.getOrderId()));
-                return "Order ID";
+                return readCancellable("New order ID (1000-9999): ");
             case 2:
-                edited.setCustomerName(promptName());
-                return "Customer name";
+                return readCancellable("New customer name: ");
             case 3:
-                edited.setPhoneNumber(promptPhone());
-                return "Phone number";
+                return readCancellable("New phone number (10 digits): ");
             case 4:
-                edited.setCakeType(promptCakeType());
-                return "Cake type";
+                System.out.println(cakeOptions());
+                return readCancellable("New cake type (number or name): ");
             case 5:
-                edited.setQuantity(promptQuantity());
-                return "Quantity";
+                return readCancellable("New quantity (1-50): ");
             case 6:
-                edited.setUnitPrice(promptPrice());
-                return "Unit price";
+                return readCancellable("New unit price per cake (e.g. 28.00): $");
             case 7:
-                // An order whose day has passed may keep its old date; otherwise the date must be today or later.
-                LocalDate today = manager.getToday();
-                LocalDate earliest = current.getPickupDate().isBefore(today) ? current.getPickupDate() : today;
-                edited.setPickupDate(promptPickupDate(earliest));
-                return "Pickup date";
+                return readCancellable("New pickup date (YYYY-MM-DD or MM/DD/YYYY): ");
             case 8:
-                edited.setPickedUp(promptYesNo("Has the customer picked up this order? (Y/N): "));
-                return "Picked up";
+                return readCancellable("Has the customer picked up this order? (Y/N): ");
             default:
-                edited.setSpecialInstructions(promptInstructions());
-                return "Special instructions";
+                return readCancellable("New special instructions (press Enter for none): ");
         }
     }
 
@@ -399,7 +400,7 @@ public class BakeryApp {
      * @return true if the user really wants to exit
      */
     private boolean confirmExit() {
-        System.out.println("Note: in Phase 1, orders are kept in memory only and are cleared when the program ends.");
+        System.out.println("Note: orders are kept in memory only (there is no database yet), so they are cleared when the program ends.");
         try {
             return promptYesNo("Are you sure you want to exit? (Y/N): ");
         } catch (InputCancelledException e) {
@@ -467,28 +468,29 @@ public class BakeryApp {
      * @return a valid cake type
      */
     private String promptCakeType() {
+        System.out.println(cakeOptions());
+        while (true) {
+            Optional<String> match = validator.matchCakeChoice(readCancellable("Cake type (number or name): "));
+            if (match.isPresent()) {
+                return match.get();
+            }
+            System.out.println("Please enter 1-" + validator.getValidCakeTypes().size()
+                    + " or a cake name. " + validator.ruleFor("cakeType"));
+        }
+    }
+
+    /**
+     * Lists the cake types with their menu numbers.
+     *
+     * @return text such as "Cake types: 1. Chocolate   2. Vanilla ..."
+     */
+    private String cakeOptions() {
         List<String> types = validator.getValidCakeTypes();
         StringBuilder options = new StringBuilder("Cake types: ");
         for (int i = 0; i < types.size(); i++) {
             options.append(i + 1).append(". ").append(types.get(i)).append("   ");
         }
-        System.out.println(options.toString().trim());
-        while (true) {
-            String input = readCancellable("Cake type (number or name): ").trim();
-            // Accept the menu number...
-            if (input.matches("\\d{1,2}")) {
-                int number = Integer.parseInt(input);
-                if (number >= 1 && number <= types.size()) {
-                    return types.get(number - 1);
-                }
-            }
-            // ...or the name, in any upper/lower case.
-            Optional<String> match = validator.matchCakeType(input);
-            if (match.isPresent()) {
-                return match.get();
-            }
-            System.out.println("Please enter 1-" + types.size() + " or a cake name. " + validator.ruleFor("cakeType"));
-        }
+        return options.toString().trim();
     }
 
     /**
@@ -513,11 +515,15 @@ public class BakeryApp {
      */
     private double promptPrice() {
         while (true) {
-            double price = readDouble("Unit price per cake (e.g. 28.00): $");
-            if (validator.isValidPrice(price)) {
-                return price;
+            String input = readCancellable("Unit price per cake (e.g. 28.00): $");
+            Optional<Double> price = validator.parseMoney(input);
+            if (price.isEmpty()) {
+                System.out.println("\"" + shorten(input.trim()) + "\" is not a dollar amount. Please type a number like 28 or 28.50.");
+            } else if (validator.isValidPrice(price.get())) {
+                return price.get();
+            } else {
+                System.out.println(validator.ruleFor("price"));
             }
-            System.out.println(validator.ruleFor("price"));
         }
     }
 
@@ -562,12 +568,9 @@ public class BakeryApp {
      */
     private boolean promptYesNo(String prompt) {
         while (true) {
-            String answer = readCancellable(prompt).trim().toLowerCase();
-            if (answer.equals("y") || answer.equals("yes")) {
-                return true;
-            }
-            if (answer.equals("n") || answer.equals("no")) {
-                return false;
+            Optional<Boolean> answer = validator.parseYesNo(readCancellable(prompt));
+            if (answer.isPresent()) {
+                return answer.get();
             }
             System.out.println("Please type Y for yes or N for no.");
         }
@@ -618,31 +621,11 @@ public class BakeryApp {
     private int readInt(String prompt) {
         while (true) {
             String input = readCancellable(prompt).trim();
-            try {
-                return Integer.parseInt(input);
-            } catch (NumberFormatException e) {
-                System.out.println("\"" + shorten(input) + "\" is not a whole number. Please type digits only, e.g. 1004.");
+            Optional<Integer> number = validator.parseWholeNumber(input);
+            if (number.isPresent()) {
+                return number.get();
             }
-        }
-    }
-
-    /**
-     * Keeps asking until the user types a plain dollar amount such as 28 or
-     * 28.50. "NaN", "Infinity", "1e3" and negative numbers are rejected.
-     *
-     * @param prompt the text to show
-     * @return the amount entered
-     */
-    private double readDouble(String prompt) {
-        while (true) {
-            String input = readCancellable(prompt).trim();
-            if (input.startsWith("$")) {
-                input = input.substring(1).trim();
-            }
-            if (input.matches("\\d{1,7}(\\.\\d{1,2})?")) {
-                return Double.parseDouble(input);
-            }
-            System.out.println("\"" + shorten(input) + "\" is not a dollar amount. Please type a number like 28 or 28.50.");
+            System.out.println("\"" + shorten(input) + "\" is not a whole number. Please type digits only, e.g. 1004.");
         }
     }
 

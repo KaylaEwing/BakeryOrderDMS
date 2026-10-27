@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
  * Class:   Order
  *
  * Purpose: Represents one custom cake order placed at the bakery. This is the

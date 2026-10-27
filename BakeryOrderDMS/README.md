@@ -1,9 +1,9 @@
-# Bakery Order Management System — Phase 1
+# Bakery Order Management System — Phase 2 (Testing)
 
 CEN 3024C · [Your Name]
 
 A command-line Java application that manages custom cake orders for a small bakery.
-Phase 1 covers the logic and input validation only. There is no GUI and no database yet.
+Phase 1 built the logic and input validation. Phase 2 adds JUnit 5 unit tests. There is no GUI and no database yet.
 
 ## Features
 
@@ -56,6 +56,23 @@ java -jar BakeryOrderDMS.jar
 ```
 
 Requires Java 11 or newer. If `orders.txt` is not in the same folder, enter its full path.
+
+## Unit tests (Phase 2)
+
+The `test` folder holds 70 JUnit 5 tests. Each area has positive tests (valid input works) and negative tests (bad input is rejected and nothing changes).
+
+| Test class | What it proves |
+|---|---|
+| `FileOpenTest` | A text file opens and its orders load; missing, blank, non-.txt, folder, empty and badly formatted files are handled |
+| `AddOrderTest` | A valid order is added and found with the same data; every kind of bad field is rejected |
+| `RemoveOrderTest` | An order is removed and no longer exists; removing a missing ID returns false |
+| `UpdateOrderTest` | All 9 attributes can be updated from user-typed text; bad text for each attribute is rejected |
+| `DailyReportTest` | The custom action counts cakes per type and calculates $181.00 + $12.67 tax = $193.67 |
+| `InputValidationTest` | Typed numbers, prices, dates and yes/no answers are read safely |
+
+`TestHelper` builds an `OrderManager` whose clock is fixed at 2026-11-01, so the date rules give the same results on any day.
+
+**Run them in IntelliJ:** choose **All Unit Tests** in the run menu at the top right and click Run, or right-click the `test` folder › **Run 'All Tests'**. The first time, IntelliJ downloads JUnit 5.10.3 automatically.
 
 ## Classes
 

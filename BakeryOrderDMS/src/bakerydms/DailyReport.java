@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
  * Class:   DailyReport
  *
  * Purpose: Holds the result of the custom action, the Daily Production

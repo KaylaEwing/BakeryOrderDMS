@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
  * Class:   OrderManager
  *
  * Purpose: The business logic layer of the DMS. It keeps the list of Order
@@ -127,6 +127,30 @@ public class OrderManager {
             orders.add(cleaned);
         }
         return errors;
+    }
+
+    /**
+     * Creates an order from individual values entered by the user and adds it.
+     * New orders always start as "not picked up". This version exists so the
+     * user interface (and unit tests) can pass plain values instead of building
+     * an Order object first.
+     *
+     * @param orderId             unique 4-digit order number
+     * @param customerName        customer's full name
+     * @param phoneNumber         customer's phone number
+     * @param cakeType            type of cake
+     * @param quantity            number of cakes
+     * @param unitPrice           price of one cake
+     * @param pickupDate          date the order will be collected
+     * @param specialInstructions notes for the baker (may be empty)
+     * @return a list of problems; an EMPTY list means the order was added
+     */
+    public List<String> addOrder(int orderId, String customerName, String phoneNumber, String cakeType,
+                                 int quantity, double unitPrice, LocalDate pickupDate,
+                                 String specialInstructions) {
+        Order order = new Order(orderId, customerName, phoneNumber, cakeType, quantity,
+                unitPrice, pickupDate, false, specialInstructions);
+        return addOrder(order);
     }
 
     /**
@@ -269,6 +293,118 @@ public class OrderManager {
             orders.set(index, cleaned);
         }
         return errors;
+    }
+
+    /**
+     * Changes ONE field of an order using exactly what the user typed.
+     * The text is converted to the right data type here, then the whole
+     * order is checked by updateOrder() before anything is saved, so a bad
+     * value never changes the stored order.
+     *
+     * Field numbers (the same numbers shown in the update menu):
+     *   1 Order ID, 2 Customer name, 3 Phone number, 4 Cake type, 5 Quantity,
+     *   6 Unit price, 7 Pickup date, 8 Picked up, 9 Special instructions
+     *
+     * @param orderId     the ID of the order to change
+     * @param fieldNumber which field to change (1-9)
+     * @param newValue    the new value exactly as the user typed it
+     * @return a list of problems; an EMPTY list means the field was updated
+     */
+    public List<String> updateField(int orderId, int fieldNumber, String newValue) {
+        Optional<Order> found = findOrderById(orderId);
+        if (found.isEmpty()) {
+            return List.of("Order #" + orderId + " was not found.");
+        }
+        if (fieldNumber < 1 || fieldNumber > 9) {
+            return List.of("Field number must be from 1 to 9.");
+        }
+        String value = (newValue == null) ? "" : newValue.trim();
+        Order edited = found.get(); // findOrderById returns a copy, so editing it is safe
+
+        // Convert the text to the field's data type. If it can't be converted, stop here.
+        switch (fieldNumber) {
+            case 1: {
+                Optional<Integer> id = validator.parseWholeNumber(value);
+                if (id.isEmpty()) {
+                    return List.of(validator.ruleFor("orderId"));
+                }
+                edited.setOrderId(id.get());
+                break;
+            }
+            case 2:
+                edited.setCustomerName(value);
+                break;
+            case 3:
+                edited.setPhoneNumber(value);
+                break;
+            case 4: {
+                // Accept the menu number (1-4) or the cake name.
+                Optional<String> cake = validator.matchCakeChoice(value);
+                if (cake.isEmpty()) {
+                    return List.of(validator.ruleFor("cakeType"));
+                }
+                edited.setCakeType(cake.get());
+                break;
+            }
+            case 5: {
+                Optional<Integer> quantity = validator.parseWholeNumber(value);
+                if (quantity.isEmpty()) {
+                    return List.of(validator.ruleFor("quantity"));
+                }
+                edited.setQuantity(quantity.get());
+                break;
+            }
+            case 6: {
+                Optional<Double> price = validator.parseMoney(value);
+                if (price.isEmpty()) {
+                    return List.of("Unit price must be a dollar amount such as 28 or 28.50.");
+                }
+                edited.setUnitPrice(price.get());
+                break;
+            }
+            case 7: {
+                Optional<LocalDate> date = validator.parseDate(value);
+                if (date.isEmpty()) {
+                    return List.of(validator.ruleFor("date"));
+                }
+                edited.setPickupDate(date.get());
+                break;
+            }
+            case 8: {
+                Optional<Boolean> pickedUp = validator.parseYesNo(value);
+                if (pickedUp.isEmpty()) {
+                    return List.of("Picked up must be Y or N (yes/no or true/false).");
+                }
+                edited.setPickedUp(pickedUp.get());
+                break;
+            }
+            default:
+                edited.setSpecialInstructions(value);
+                break;
+        }
+        // Check every rule (range, uniqueness, etc.) before saving.
+        return updateOrder(orderId, edited);
+    }
+
+    /**
+     * Gives the name of a field number used in the update menu.
+     *
+     * @param fieldNumber 1-9
+     * @return the field's name, or "Unknown field" for any other number
+     */
+    public String describeField(int fieldNumber) {
+        switch (fieldNumber) {
+            case 1: return "Order ID";
+            case 2: return "Customer name";
+            case 3: return "Phone number";
+            case 4: return "Cake type";
+            case 5: return "Quantity";
+            case 6: return "Unit price";
+            case 7: return "Pickup date";
+            case 8: return "Picked up";
+            case 9: return "Special instructions";
+            default: return "Unknown field";
+        }
     }
 
     // ===============================================================

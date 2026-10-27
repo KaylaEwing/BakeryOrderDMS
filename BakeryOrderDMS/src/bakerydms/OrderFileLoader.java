@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
  * Class:   OrderFileLoader
  *
  * Purpose: Reads orders from a text file (the "batch" way of creating data).
@@ -54,17 +54,25 @@ public class OrderFileLoader {
     private final DateTimeFormatter fileDateFormat =
             DateTimeFormatter.ofPattern("uuuu-MM-dd").withResolverStyle(ResolverStyle.STRICT);
 
+    /** Shared parsing rules for numbers, prices and yes/no values. */
+    private final OrderValidator validator;
+
     /**
      * Creates a loader that splits lines on the given delimiter.
      *
      * @param delimiter the field separator, e.g. ","
-     * @throws IllegalArgumentException if the delimiter is null or empty
+     * @param validator supplies the rules for reading numbers, prices and yes/no values
+     * @throws IllegalArgumentException if the delimiter is empty or the validator is missing
      */
-    public OrderFileLoader(String delimiter) {
+    public OrderFileLoader(String delimiter, OrderValidator validator) {
         if (delimiter == null || delimiter.isEmpty()) {
             throw new IllegalArgumentException("A delimiter is required.");
         }
+        if (validator == null) {
+            throw new IllegalArgumentException("A validator is required.");
+        }
         this.delimiter = delimiter;
+        this.validator = validator;
     }
 
     /**
@@ -213,11 +221,8 @@ public class OrderFileLoader {
      * @throws IllegalArgumentException if the text is not a whole number
      */
     private int parseWholeNumber(String text, String fieldName) {
-        try {
-            return Integer.parseInt(text.trim());
-        } catch (NumberFormatException e) {
-            throw new IllegalArgumentException(fieldName + " \"" + shorten(text.trim()) + "\" is not a whole number.");
-        }
+        return validator.parseWholeNumber(text).orElseThrow(() ->
+                new IllegalArgumentException(fieldName + " \"" + shorten(text.trim()) + "\" is not a whole number."));
     }
 
     /**
@@ -228,15 +233,8 @@ public class OrderFileLoader {
      * @throws IllegalArgumentException if the text is not a plain dollar amount
      */
     private double parseMoney(String text) {
-        String cleaned = text.trim();
-        if (cleaned.startsWith("$")) {
-            cleaned = cleaned.substring(1);
-        }
-        // Only plain amounts like 28 or 28.50 are allowed (no "NaN", "1e3" or negatives).
-        if (!cleaned.matches("\\d{1,7}(\\.\\d+)?")) {
-            throw new IllegalArgumentException("unit price \"" + shorten(text.trim()) + "\" is not a dollar amount.");
-        }
-        return Double.parseDouble(cleaned);
+        return validator.parseMoney(text).orElseThrow(() ->
+                new IllegalArgumentException("unit price \"" + shorten(text.trim()) + "\" is not a dollar amount."));
     }
 
     /**
@@ -263,14 +261,8 @@ public class OrderFileLoader {
      * @throws IllegalArgumentException if the text is not one of the accepted words
      */
     private boolean parseYesNo(String text) {
-        String cleaned = text.trim().toLowerCase();
-        if (cleaned.equals("true") || cleaned.equals("yes") || cleaned.equals("y")) {
-            return true;
-        }
-        if (cleaned.equals("false") || cleaned.equals("no") || cleaned.equals("n")) {
-            return false;
-        }
-        throw new IllegalArgumentException("picked-up value \"" + shorten(text.trim()) + "\" must be true or false.");
+        return validator.parseYesNo(text).orElseThrow(() ->
+                new IllegalArgumentException("picked-up value \"" + shorten(text.trim()) + "\" must be true or false."));
     }
 
     /**

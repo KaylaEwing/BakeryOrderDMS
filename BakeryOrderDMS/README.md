@@ -1,23 +1,22 @@
-# Bakery Order Management System — Phase 2 (Testing)
+# Bakery Order Management System — Phase 3 (GUI)
 
-CEN 3024C · [Your Name]
+CEN 3024C · Kayla Ewing
 
-A command-line Java application that manages custom cake orders for a small bakery.
-Phase 1 built the logic and input validation. Phase 2 adds JUnit 5 unit tests. There is no GUI and no database yet.
+A Java Swing application that manages custom cake orders for a small bakery.
+Phase 1 built the logic and input validation, Phase 2 added JUnit 5 unit tests, and Phase 3 adds a graphical user interface. There is no database yet.
 
-## Features
+## Features (all in one window)
 
-| Menu option | What it does |
+| Window area | What the user can do |
 |---|---|
-| 1. Load orders from a text file | Reads many orders at once from a `.txt` file. Bad lines are skipped and explained. |
-| 2. Display all orders | Prints every order in a table, sorted by order ID. |
-| 3. Add a new order | Asks for each field and checks it as you type. |
-| 4. Remove an order | Removes an order by its ID after you confirm. |
-| 5. Update an order | Changes any of the 9 fields of any order. |
-| 6. Daily Production Report | **Custom action.** For a pickup date, counts the cakes of each type still to be baked and calculates the expected revenue (subtotal + 7% sales tax). |
-| 7. Exit | Ends the program (after confirmation). |
+| Header | See the bakery logo and title; **Exit** (asks to confirm; closing the window with X also asks) |
+| File bar | Type a `.txt` file name or path, or click **Browse…**, then **Load File**. Blank, missing, folder and non-.txt names are reported. Bad lines are skipped and listed. |
+| Order form (left) | Fill in all 9 fields and click **Add Order**; click a row in the table to load it, change any field and click **Update Order**; type or select an Order ID and click **Delete Order** (asks to confirm); **Clear Form** starts over |
+| Order table | Displays every order, sorted by ID (click a column header to sort). **Search** by ID, customer or cake type; **Show All** clears the search. Picked-up orders are shown in gray italics. |
+| Report bar | **Custom action:** enter a pickup date and click **Generate Report** to see how many cakes of each type to bake and the expected revenue (subtotal + 7% tax) |
+| Status bar | Shows the result of every action in green (success) or red (problem) |
 
-Type `cancel` at any prompt while adding, removing or updating to return to the menu without changes.
+Bad input is never accepted: problems are listed in a message window, the fields are outlined in red, and nothing is saved until every field is valid.
 
 ## The Order object
 
@@ -47,9 +46,9 @@ orderId,customerName,phoneNumber,cakeType,quantity,unitPrice,pickupDate,pickedUp
 
 ## How to run
 
-**In IntelliJ:** open the project folder, then open `src/bakerydms/BakeryApp.java` and click the green Run arrow next to `main`. When asked for a file, type `orders.txt`.
+**In IntelliJ:** choose **BakeryApp** in the run menu at the top right and click Run. In the window, type `orders.txt` in the file box and click **Load File**.
 
-**From the JAR:** open a terminal in the folder that contains the JAR and run:
+**From the JAR:** double-click `BakeryOrderDMS.jar`, or open a terminal in its folder and run:
 
 ```
 java -jar BakeryOrderDMS.jar
@@ -76,10 +75,13 @@ The `test` folder holds 70 JUnit 5 tests. Each area has positive tests (valid in
 
 ## Classes
 
-- `BakeryApp` – menu and user input (presentation layer); holds `main`
+- `BakeryApp` – starts the program and opens the window; holds `main`
+- `BakeryOrderWindow` – the GUI: form, table, file bar, report bar, status bar (presentation layer)
+- `OrderTableModel` – connects the list of orders to the table on screen
+- `Theme` – colors, fonts and styled buttons used throughout the GUI
+- `CakeLogo` – draws the cake logo in code (header and window icon)
 - `OrderManager` – CRUD operations and the daily report (business logic layer)
 - `OrderValidator` – every data rule in one place
 - `OrderFileLoader` – reads and parses text files (data layer)
 - `Order` – the data object
 - `DailyReport` – result of the custom action
-- `InputCancelledException`, `InputEndedException` – let the user cancel safely and stop the program crashing if input closes

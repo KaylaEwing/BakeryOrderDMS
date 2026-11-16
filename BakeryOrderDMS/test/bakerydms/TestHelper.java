@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 26, 2026 (Phase 2)
+ * Date:    October 26, 2026 (Phase 2); updated November 13, 2026 (Phase 4)
  * Class:   TestHelper
  *
  * Purpose: Shared set-up code for the unit tests. It builds an OrderManager
@@ -48,16 +48,19 @@ public class TestHelper {
     }
 
     /**
-     * Creates an empty OrderManager whose "today" is always 2026-11-01
-     * and whose sales tax rate is 7%.
+     * Creates an empty OrderManager whose "today" is always 2026-11-01,
+     * whose sales tax rate is 7%, and which stores orders in an in-memory
+     * stand-in for the database.
      *
      * @return a new, empty OrderManager
      */
     public OrderManager newManager() {
         ZoneId zone = ZoneId.systemDefault();
         Clock fixedClock = Clock.fixed(today.atStartOfDay(zone).toInstant(), zone);
-        OrderValidator validator = newValidator();
-        return new OrderManager(validator, new OrderFileLoader(",", validator), 0.07, fixedClock);
+        OrderManager manager = new OrderManager(newValidator(), 0.07, fixedClock);
+        // Use the in-memory stand-in for the database, so tests run without a MySQL server.
+        manager.connectTo(new InMemoryOrderRepository());
+        return manager;
     }
 
     /**
@@ -80,7 +83,7 @@ public class TestHelper {
 
     /**
      * Creates a manager that already holds the five Valentine's orders from
-     * orders.txt plus one order for the next day. Used by the update,
+     * the sample database plus one order for the next day. Used by the update,
      * remove and report tests.
      *
      *   1001 Chocolate  x2 @ $25  2027-02-13  open

@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 1, 2026 (Phase 3)
+ * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4)
  * Class:   OrderTableModel
  *
  * Purpose: Connects the list of orders to the JTable on screen. The table
@@ -43,7 +43,8 @@ public class OrderTableModel extends AbstractTableModel {
     }
 
     /**
-     * Reloads every order from the manager and redraws the table.
+     * Reloads every order from the manager (in Phase 4, from the database)
+     * and redraws the table.
      *
      * @return the number of orders now shown
      */
@@ -52,6 +53,17 @@ public class OrderTableModel extends AbstractTableModel {
         rows.addAll(manager.getAllOrders());
         fireTableDataChanged();
         return rows.size();
+    }
+
+    /**
+     * Empties the table (used before a database is connected).
+     *
+     * @return 0, the number of orders now shown
+     */
+    public int clear() {
+        rows.clear();
+        fireTableDataChanged();
+        return 0;
     }
 
     /**

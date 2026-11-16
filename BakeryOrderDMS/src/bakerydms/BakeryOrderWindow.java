@@ -1,15 +1,16 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 1, 2026 (Phase 3)
+ * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4)
  * Class:   BakeryOrderWindow
  *
  * Purpose: The graphical user interface (GUI) of the Bakery Order
- *          Management System. It replaces the Phase 1 command-line menu and
- *          follows the layout planned in Module 4:
+ *          Management System, following the layout planned in Module 4:
  *
  *            1. Header        - logo, title and the Exit button
- *            2. File bar      - load orders from a text file
+ *            2. Database bar  - the user types the MySQL server address,
+ *                               port, database, username and password and
+ *                               clicks Connect (Phase 4)
  *            3. Order form    - every field of an order, with Add, Update,
  *                               Delete and Clear buttons (left side)
  *            4. Order table   - every order in the system, with search
@@ -17,8 +18,11 @@
  *            6. Status bar    - a message after every action
  *
  *          The window only collects what the user types and shows results.
- *          All checking and storing is done by OrderManager, the same class
- *          the JUnit tests check, so every rule from Phase 1 and 2 still applies.
+ *          All checking is done by OrderManager, the same class the JUnit
+ *          tests check, and every change is saved straight to the MySQL
+ *          database, so it can be seen at once in MySQL Workbench or the
+ *          mysql command line. The Refresh button reloads the table from the
+ *          database to show changes made outside the program.
  *
  *          Crash protection: every button runs inside safely(), which catches
  *          any unexpected error and shows a message instead of stopping the
@@ -34,6 +38,7 @@ package bakerydms;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
+import java.awt.Cursor;
 import java.awt.Dimension;
 import java.awt.FlowLayout;
 import java.awt.Font;
@@ -42,10 +47,10 @@ import java.awt.GridBagLayout;
 import java.awt.Insets;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
-import java.io.File;
 import java.time.LocalDate;
 import java.time.format.TextStyle;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -62,21 +67,19 @@ import javax.swing.JButton;
 import javax.swing.JCheckBox;
 import javax.swing.JComboBox;
 import javax.swing.JComponent;
-import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JOptionPane;
+import javax.swing.JPasswordField;
 import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSpinner;
 import javax.swing.JTable;
-import javax.swing.JTextArea;
 import javax.swing.JTextField;
 import javax.swing.ListSelectionModel;
 import javax.swing.RowFilter;
 import javax.swing.SpinnerNumberModel;
 import javax.swing.SwingConstants;
-import javax.swing.filechooser.FileNameExtensionFilter;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
@@ -90,6 +93,8 @@ public class BakeryOrderWindow {
     private final OrderManager manager;
     /** Shortcut to the validation rules. */
     private final OrderValidator validator;
+    /** Checks the connection details and opens the MySQL database. */
+    private final DatabaseConnector connector;
     /** Colors, fonts and styled components. */
     private final Theme theme = new Theme();
     /** The window itself. */
@@ -101,8 +106,15 @@ public class BakeryOrderWindow {
     private final TableRowSorter<OrderTableModel> sorter;
     private final JLabel countLabel = new JLabel();
 
-    // ---- Toolbar ----
-    private final JTextField pathField;
+    // ---- Database bar ----
+    private final JTextField hostField;
+    private final JTextField portField;
+    private final JTextField databaseField;
+    private final JTextField userField;
+    private final JPasswordField passwordField;
+    private final JLabel connectionPill = new JLabel();
+
+    // ---- Search ----
     private final JTextField searchField;
 
     // ---- Order form ----
@@ -128,17 +140,28 @@ public class BakeryOrderWindow {
     /**
      * Creates the window and all its parts (it is not shown until show() is called).
      *
-     * @param manager the order manager that stores and checks orders
+     * @param manager   the order manager that checks and stores orders
+     * @param connector opens the MySQL database with the details the user types
      */
-    public BakeryOrderWindow(OrderManager manager) {
+    public BakeryOrderWindow(OrderManager manager, DatabaseConnector connector) {
         this.manager = manager;
         this.validator = manager.getValidator();
+        this.connector = connector;
         this.tableModel = new OrderTableModel(manager);
         this.table = new JTable(tableModel);
         this.sorter = new TableRowSorter<>(tableModel);
 
-        pathField = theme.textField(30);
-        searchField = theme.textField(12);
+        // Connection boxes start with the usual MySQL defaults; the user can change all of them.
+        // Nothing here is a password or a path on the developer's computer.
+        hostField = theme.textField(11);
+        hostField.setText("localhost");
+        portField = theme.textField(5);
+        portField.setText(String.valueOf(connector.getDefaultPort()));
+        databaseField = theme.textField(10);
+        databaseField.setText("bakery_dms");
+        userField = theme.textField(9);
+        passwordField = theme.passwordField(10);
+        searchField = theme.textField(10);
         idField = theme.textField(10);
         nameField = theme.textField(18);
         phoneField = theme.textField(14);
@@ -171,23 +194,23 @@ public class BakeryOrderWindow {
         root.setBackground(theme.getCream());
         root.add(buildHeader(), BorderLayout.NORTH);
 
-        // Left: the order form, full height. Right: file bar, table, report bar.
+        // Top: database bar across the full width. Left: order form. Right: table and report bar.
         JPanel right = new JPanel(new BorderLayout(0, 12));
         right.setOpaque(false);
-        right.add(buildToolbar(), BorderLayout.NORTH);
         right.add(buildTableCard(), BorderLayout.CENTER);
         right.add(buildReportBar(), BorderLayout.SOUTH);
 
-        JPanel body = new JPanel(new BorderLayout(14, 0));
+        JPanel body = new JPanel(new BorderLayout(14, 12));
         body.setOpaque(false);
-        body.setBorder(BorderFactory.createEmptyBorder(14, 18, 12, 18));
+        body.setBorder(BorderFactory.createEmptyBorder(12, 18, 12, 18));
+        body.add(buildDatabaseBar(), BorderLayout.NORTH);
         body.add(buildFormCard(), BorderLayout.WEST);
         body.add(right, BorderLayout.CENTER);
         root.add(body, BorderLayout.CENTER);
         root.add(buildStatusBar(), BorderLayout.SOUTH);
 
         frame.setContentPane(root);
-        frame.setMinimumSize(new Dimension(1150, 690));
+        frame.setMinimumSize(new Dimension(1150, 730));
         // Use 1360 x 820, or the whole screen if the screen is smaller than that.
         java.awt.Rectangle screen = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().getMaximumWindowBounds();
         frame.setSize(Math.min(1360, screen.width), Math.min(820, screen.height));
@@ -197,7 +220,8 @@ public class BakeryOrderWindow {
         }
         clearForm();
         refreshTable();
-        setStatus("Welcome! Load a text file of orders or add an order using the form.", true);
+        setConnectionPill(false, "Not connected");
+        setStatus("Welcome! Enter your MySQL server details at the top and click Connect.", true);
         frame.setVisible(true);
         return true;
     }
@@ -238,33 +262,91 @@ public class BakeryOrderWindow {
         JButton exit = theme.headerButton("Exit");
         exit.setToolTipText("Close the program (you will be asked to confirm)");
         exit.addActionListener(e -> safely(this::confirmExit));
-        JPanel right = new JPanel(new GridBagLayout()); // centers the button vertically
+        // The connection status pill sits in the header, beside Exit, so it is
+        // always visible and leaves the database bar room for its boxes.
+        connectionPill.setFont(theme.body(Font.BOLD, 12));
+        connectionPill.setOpaque(true);
+        connectionPill.setBorder(BorderFactory.createEmptyBorder(5, 12, 5, 12));
+        JPanel right = new JPanel(new GridBagLayout()); // centers the pill and button vertically
         right.setOpaque(false);
+        GridBagConstraints gap = new GridBagConstraints();
+        gap.insets = new Insets(0, 0, 0, 16);
+        right.add(connectionPill, gap);
         right.add(exit);
         header.add(right, BorderLayout.EAST);
         return header;
     }
 
     /**
-     * Zone 2: the file bar for loading orders from a text file.
+     * Zone 2: the database bar. The user types where their MySQL server is
+     * and how to log in, then clicks Connect (or presses Enter).
      *
-     * @return the file bar
+     * @return the database bar
      */
-    private JComponent buildToolbar() {
-        JPanel bar = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
+    private JComponent buildDatabaseBar() {
+        JPanel bar = new JPanel(new GridBagLayout());
         bar.setBackground(theme.getCard());
         bar.setBorder(theme.cardBorder(10));
-        bar.add(theme.fieldLabel("Load orders from a text file:"));
-        pathField.setToolTipText("Type a file name such as orders.txt, a full path, or click Browse");
-        pathField.addActionListener(e -> safely(this::loadFile)); // Enter key loads the file
-        bar.add(pathField);
-        JButton browse = theme.secondaryButton("Browse\u2026");
-        browse.addActionListener(e -> safely(this::browseForFile));
-        bar.add(browse);
-        JButton loadButton = theme.primaryButton("Load File");
-        loadButton.addActionListener(e -> safely(this::loadFile));
-        bar.add(loadButton);
+
+        hostField.setToolTipText("Server address: localhost if MySQL is on this computer, or an IP address");
+        portField.setToolTipText("Port number (MySQL normally uses 3306)");
+        databaseField.setToolTipText("Database name (the provided bakery_dms.sql script creates bakery_dms)");
+        userField.setToolTipText("Your MySQL username, for example root");
+        passwordField.setToolTipText("Your MySQL password");
+
+        GridBagConstraints c = new GridBagConstraints();
+        c.gridy = 0;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(0, 0, 0, 14);
+        bar.add(theme.heading("MySQL Database"), c);
+        // GridBagLayout lets the boxes grow on a wide screen and shrink on a
+        // small one (weights), so the Connect button is never pushed off screen.
+        addLabeled(bar, c, "Server", hostField, 3);
+        addLabeled(bar, c, "Port", portField, 1);
+        addLabeled(bar, c, "Database", databaseField, 3);
+        addLabeled(bar, c, "Username", userField, 2);
+        addLabeled(bar, c, "Password", passwordField, 2);
+
+        // Pressing Enter in any of the boxes connects.
+        JTextField[] boxes = {hostField, portField, databaseField, userField, passwordField};
+        for (JTextField box : boxes) {
+            box.addActionListener(e -> safely(this::connectToDatabase));
+        }
+        JButton connect = theme.primaryButton("Connect");
+        connect.setToolTipText("Connect to the MySQL database and load its orders");
+        connect.addActionListener(e -> safely(this::connectToDatabase));
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        c.insets = new Insets(0, 4, 0, 0);
+        bar.add(connect, c);
         return bar;
+    }
+
+    /**
+     * Adds a small label and its box to the database bar.
+     *
+     * @param panel  the bar
+     * @param c      the layout settings, reused for each box
+     * @param label  the label text
+     * @param field  the box
+     * @param weight how much of any spare width this box gets
+     * @return the same box
+     */
+    private JComponent addLabeled(JPanel panel, GridBagConstraints c, String label, JComponent field, int weight) {
+        JLabel l = theme.fieldLabel(label + ":");
+        l.setLabelFor(field);
+        c.weightx = 0;
+        c.fill = GridBagConstraints.NONE;
+        c.insets = new Insets(0, 0, 0, 6);
+        panel.add(l, c);
+        Dimension size = field.getPreferredSize();
+        field.setPreferredSize(new Dimension(40 * weight + 30, size.height));
+        field.setMinimumSize(new Dimension(20 * weight + 40, size.height));
+        c.weightx = weight;
+        c.fill = GridBagConstraints.HORIZONTAL;
+        c.insets = new Insets(0, 0, 0, 14);
+        panel.add(field, c);
+        return field;
     }
 
     /**
@@ -421,6 +503,10 @@ public class BakeryOrderWindow {
         showAll.setToolTipText("Clear the search and display every order");
         showAll.addActionListener(e -> safely(() -> showAllOrders() >= 0));
         search.add(showAll);
+        JButton refresh = theme.secondaryButton("Refresh");
+        refresh.setToolTipText("Reload every order from the database (shows changes made in MySQL Workbench)");
+        refresh.addActionListener(e -> safely(this::refreshFromDatabase));
+        search.add(refresh);
         titleRow.add(search, BorderLayout.EAST);
         cardPanel.add(titleRow, BorderLayout.NORTH);
 
@@ -522,68 +608,66 @@ public class BakeryOrderWindow {
     // ===============================================================
 
     /**
-     * Loads orders from the file named in the file box.
-     * Blank names, missing files, folders and non-.txt files are reported, not crashed on.
+     * Connects to the MySQL database using the details in the database bar.
+     * Blank or badly formatted details are reported before connecting; a wrong
+     * password, an unknown server or a missing database are reported after
+     * trying. Nothing here can crash the program.
      *
-     * @return true if at least one order was loaded
+     * @return true if the database was connected and its orders loaded
      */
-    public boolean loadFile() {
-        String path = pathField.getText().trim();
-        if (path.isEmpty()) {
-            pathField.setBorder(theme.fieldBorder(true));
-            pathField.requestFocusInWindow();
-            setStatus("Please type a file name (for example orders.txt) or click Browse.", false);
-            JOptionPane.showMessageDialog(frame,
-                    "The file name is blank.\nType a file name such as orders.txt, or click Browse to pick a file.",
-                    "No File Chosen", JOptionPane.WARNING_MESSAGE);
+    public boolean connectToDatabase() {
+        resetConnectionBorders();
+        char[] password = passwordField.getPassword();
+        try {
+            List<String> problems = connector.validate(hostField.getText(), portField.getText(),
+                    databaseField.getText(), userField.getText(), password);
+            if (!problems.isEmpty()) {
+                markConnectionFields(String.join(" ", problems));
+                setStatus("Please check the database details: " + problems.get(0), false);
+                JOptionPane.showMessageDialog(frame, htmlList("Please check the connection details", problems),
+                        "Connection Details Needed", JOptionPane.WARNING_MESSAGE);
+                return false;
+            }
+            frame.setCursor(Cursor.getPredefinedCursor(Cursor.WAIT_CURSOR));
+            OrderRepository repository = connector.connect(hostField.getText(), portField.getText(),
+                    databaseField.getText(), userField.getText(), password);
+            int count = manager.connectTo(repository);
+            sorter.setRowFilter(null);
+            searchField.setText("");
+            clearForm();
+            refreshTable();
+            setConnectionPill(true, "Connected: " + repository.describe());
+            setStatus("Connected to " + repository.describe() + ". " + count + " order(s) loaded from the database.", true);
+            JOptionPane.showMessageDialog(frame, "Connected to " + repository.describe() + ".\n"
+                    + count + " order(s) were loaded from the database.", "Connected", JOptionPane.INFORMATION_MESSAGE);
+            return true;
+        } catch (DataAccessException e) {
+            markConnectionFields(e.getMessage());
+            setStatus(e.getMessage(), false);
+            String still = manager.isConnected()
+                    ? "\n\nYou are still connected to " + manager.describeStorage() + "." : "";
+            JOptionPane.showMessageDialog(frame, wrap(e.getMessage()) + still, "Could Not Connect", JOptionPane.ERROR_MESSAGE);
             return false;
+        } finally {
+            Arrays.fill(password, '\0'); // don't leave the password sitting in memory
+            frame.setCursor(Cursor.getDefaultCursor());
         }
-        pathField.setBorder(theme.fieldBorder(false));
-        int before = manager.getOrderCount();
-        List<String> messages = manager.loadFromFile(path);
-        refreshTable();
-        int added = manager.getOrderCount() - before;
-        String summary = messages.isEmpty() ? "" : messages.get(0);
-
-        if (summary.startsWith("Could not load")) {
-            pathField.setBorder(theme.fieldBorder(true));
-            setStatus(summary, false);
-            JOptionPane.showMessageDialog(frame, wrap(summary), "File Not Loaded", JOptionPane.ERROR_MESSAGE);
-            return false;
-        }
-        setStatus(summary, added > 0);
-        if (messages.size() > 1) {
-            // Some lines were skipped: list them in a scrollable box.
-            JTextArea details = new JTextArea(String.join(System.lineSeparator(), messages));
-            details.setEditable(false);
-            details.setFont(theme.mono(12));
-            details.setLineWrap(true);
-            details.setWrapStyleWord(true);
-            JScrollPane scroll = new JScrollPane(details);
-            scroll.setPreferredSize(new Dimension(640, 260));
-            JOptionPane.showMessageDialog(frame, scroll, "File Loaded With Skipped Lines", JOptionPane.WARNING_MESSAGE);
-        } else {
-            JOptionPane.showMessageDialog(frame, summary, "File Loaded", JOptionPane.INFORMATION_MESSAGE);
-        }
-        return added > 0;
     }
 
     /**
-     * Opens a file picker that shows only .txt files and puts the chosen path in the file box.
+     * Reloads the table from the database, so changes made outside the
+     * program (for example in MySQL Workbench) appear.
      *
-     * @return true if a file was chosen
+     * @return true if the table was reloaded
      */
-    public boolean browseForFile() {
-        JFileChooser chooser = new JFileChooser(new File(System.getProperty("user.dir")));
-        chooser.setDialogTitle("Choose an order file");
-        chooser.setFileFilter(new FileNameExtensionFilter("Text files (*.txt)", "txt"));
-        if (chooser.showOpenDialog(frame) != JFileChooser.APPROVE_OPTION) {
-            setStatus("No file chosen.", true);
-            return false;
+    public boolean refreshFromDatabase() {
+        if (!manager.isConnected()) {
+            throw new DataAccessException("Not connected to a database yet. Enter your MySQL details at the top and click Connect.");
         }
-        pathField.setText(chooser.getSelectedFile().getAbsolutePath());
-        pathField.setBorder(theme.fieldBorder(false));
-        setStatus("File chosen. Click Load File to load its orders.", true);
+        int count = refreshTable();
+        int shown = table.getRowCount();
+        setStatus("Reloaded " + count + " order(s) from " + manager.describeStorage()
+                + (shown < count ? " (" + shown + " match the current search)." : "."), true);
         return true;
     }
 
@@ -642,7 +726,7 @@ public class BakeryOrderWindow {
         searchField.setText("");
         refreshTable();
         selectOrder(o.getOrderId()); // highlights the new row and loads it into the form
-        setStatus("Order #" + o.getOrderId() + " for " + o.getCustomerName() + " was added. Total: "
+        setStatus("Order #" + o.getOrderId() + " for " + o.getCustomerName() + " was saved to the database. Total: "
                 + money(manager.calculateTotal(manager.findOrderById(o.getOrderId()).orElse(o))), true);
         showFormMessage("Order #" + o.getOrderId() + " added.", true);
         return true;
@@ -672,7 +756,7 @@ public class BakeryOrderWindow {
         int newId = order.get().getOrderId();
         refreshTable();
         selectOrder(newId);
-        setStatus("Order #" + newId + (newId != oldId ? " (was #" + oldId + ")" : "") + " was updated.", true);
+        setStatus("Order #" + newId + (newId != oldId ? " (was #" + oldId + ")" : "") + " was updated in the database.", true);
         showFormMessage("Changes saved.", true);
         return true;
     }
@@ -711,7 +795,7 @@ public class BakeryOrderWindow {
         refreshTable();
         clearForm();
         setStatus(removed
-                ? "Order #" + o.getOrderId() + " was deleted. " + manager.getOrderCount() + " order(s) remain."
+                ? "Order #" + o.getOrderId() + " was deleted from the database. " + manager.getOrderCount() + " order(s) remain."
                 : "Order #" + o.getOrderId() + " could not be deleted.", removed);
         return removed;
     }
@@ -807,9 +891,10 @@ public class BakeryOrderWindow {
      */
     public boolean confirmExit() {
         int answer = JOptionPane.showConfirmDialog(frame,
-                "Exit the Bakery Order Manager?\nOrders are kept in memory only, so they will be cleared.",
+                "Exit the Bakery Order Manager?\nAll your changes are already saved in the database.",
                 "Confirm Exit", JOptionPane.YES_NO_OPTION, JOptionPane.QUESTION_MESSAGE);
         if (answer == JOptionPane.YES_OPTION) {
+            manager.disconnect(); // close the database connection cleanly
             frame.dispose();
             System.exit(0);
         }
@@ -1006,12 +1091,85 @@ public class BakeryOrderWindow {
     }
 
     /**
+     * Shows whether a database is connected, in the pill at the right of the database bar.
+     *
+     * @param connected true for a green pill, false for a red one
+     * @param text      the text to show
+     * @return the text shown
+     */
+    private String setConnectionPill(boolean connected, String text) {
+        connectionPill.setText((connected ? "\u25CF  " : "\u25CB  ") + text);
+        connectionPill.setBackground(connected ? new Color(0xE3EFE5) : new Color(0xF9E0DE));
+        connectionPill.setForeground(connected ? theme.getGreen() : theme.getError());
+        return text;
+    }
+
+    /**
+     * Outlines in red the database boxes a connection problem is about.
+     *
+     * @param message the problem description
+     * @return how many boxes were marked
+     */
+    private int markConnectionFields(String message) {
+        int marked = 0;
+        if (message.contains("Server address") || message.contains("reach a MySQL server")) {
+            markError(hostField);
+            marked++;
+        }
+        if (message.contains("Port") || message.contains("reach a MySQL server")) {
+            markError(portField);
+            marked++;
+        }
+        if (message.contains("Database name") || message.contains("does not exist") || message.contains("table was not found")) {
+            markError(databaseField);
+            marked++;
+        }
+        if (message.contains("Username") || message.contains("Access denied") || message.contains("not allowed")) {
+            markError(userField);
+            marked++;
+        }
+        if (message.contains("Password") || message.contains("Access denied")) {
+            markError(passwordField);
+            marked++;
+        }
+        return marked;
+    }
+
+    /**
+     * Puts the normal border back on every database box.
+     *
+     * @return the number of boxes reset
+     */
+    private int resetConnectionBorders() {
+        JComponent[] boxes = {hostField, portField, databaseField, userField, passwordField};
+        for (JComponent box : boxes) {
+            box.setBorder(theme.fieldBorder(false));
+        }
+        return boxes.length;
+    }
+
+    /**
+     * Builds a message with a bold title and a bulleted list, for message windows.
+     *
+     * @param title the title line
+     * @param items the bullet points
+     * @return the message as HTML
+     */
+    private String htmlList(String title, List<String> items) {
+        StringBuilder html = new StringBuilder("<html><div style='width:380px'><b>" + escape(title) + "</b><ul>");
+        for (String item : items) {
+            html.append("<li style='margin-bottom:4px'>").append(escape(item)).append("</li>");
+        }
+        return html.append("</ul></div></html>").toString();
+    }
+
+    /**
      * Reloads the table from the manager and updates the order count.
      *
      * @return the number of orders in the system
      */
     private int refreshTable() {
-        int count = tableModel.refresh();
+        int count = manager.isConnected() ? tableModel.refresh() : tableModel.clear();
         updateCountLabel();
         return count;
     }
@@ -1022,7 +1180,11 @@ public class BakeryOrderWindow {
      * @return the label text
      */
     private String updateCountLabel() {
-        int total = manager.getOrderCount();
+        if (!manager.isConnected()) {
+            countLabel.setText("Not connected  \u00b7  connect to a database to see its orders");
+            return countLabel.getText();
+        }
+        int total = tableModel.getRowCount();
         int shown = table.getRowCount();
         String text = (shown == total ? total + " order(s)" : "Showing " + shown + " of " + total + " orders")
                 + "  \u00b7  click a row to edit it";
@@ -1151,6 +1313,14 @@ public class BakeryOrderWindow {
     private boolean safely(BooleanSupplier action) {
         try {
             return action.getAsBoolean();
+        } catch (DataAccessException e) {
+            // A database problem: show the plain-English explanation.
+            if (e.getMessage().contains("connection to the database was lost")) {
+                setConnectionPill(false, "Connection lost");
+            }
+            setStatus(e.getMessage(), false);
+            JOptionPane.showMessageDialog(frame, wrap(e.getMessage()), "Database Problem", JOptionPane.ERROR_MESSAGE);
+            return false;
         } catch (RuntimeException e) {
             setStatus("Something unexpected went wrong (" + e.getClass().getSimpleName() + "). No data was lost.", false);
             JOptionPane.showMessageDialog(frame,

@@ -1,29 +1,32 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
+ * Date:    October 19, 2026 (Phase 1); updated November 13, 2026 (Phase 4)
  * Class:   OrderManager
  *
- * Purpose: The business logic layer of the DMS. It keeps the list of Order
- *          objects and performs every operation on them:
- *            - Create: add one order, or load many from a text file
+ * Purpose: The business logic layer of the DMS. It checks every order and
+ *          performs every operation on the stored orders:
+ *            - Create: add an order
  *            - Read:   return all orders, or find one by ID
- *            - Update: replace an order with an edited copy
+ *            - Update: change any field of an order
  *            - Delete: remove an order by ID
  *            - Custom action: generate the Daily Production Report
- *          Every order is validated before it is stored, so the list can only
- *          ever contain good data. Methods return results (lists of error
- *          messages, booleans, objects) instead of printing, so they are easy
- *          to test and can be reused by the GUI in a later phase.
+ *          In Phase 4 the orders are stored in a MySQL database. The manager
+ *          does not know that: it talks to an OrderRepository, so the same
+ *          rules apply no matter where the data lives. Every order is
+ *          validated BEFORE it is sent to the database, so the database can
+ *          only ever contain good data. Methods return results (lists of
+ *          error messages, booleans, objects) instead of printing.
+ *
+ *          If no database is connected yet, every data method throws a
+ *          DataAccessException that tells the user to connect first.
  */
 package bakerydms;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.io.IOException;
 import java.time.Clock;
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -35,14 +38,11 @@ import java.util.Optional;
  */
 public class OrderManager {
 
-    /** All orders currently in the system. Phase 1 keeps them in memory only. */
-    private final List<Order> orders = new ArrayList<>();
+    /** Where orders are stored (the MySQL database), or null until the user connects. */
+    private OrderRepository repository;
 
     /** Checks every order before it is stored. */
     private final OrderValidator validator;
-
-    /** Reads orders from text files. */
-    private final OrderFileLoader loader;
 
     /** Sales tax rate, e.g. 0.07 for 7%. */
     private final double taxRate;
@@ -50,38 +50,32 @@ public class OrderManager {
     /** Source of "today". Passing a Clock in lets tests use a fixed date. */
     private final Clock clock;
 
-    /** At most this many skipped-line messages are listed after a file load. */
-    private final int maxProblemsShown = 20;
-
     /**
      * Creates a manager that uses the computer's clock for today's date.
      *
      * @param validator checks order data
-     * @param loader    reads order files
      * @param taxRate   sales tax rate from 0 to 1 (0.07 = 7%)
      */
-    public OrderManager(OrderValidator validator, OrderFileLoader loader, double taxRate) {
-        this(validator, loader, taxRate, Clock.systemDefaultZone());
+    public OrderManager(OrderValidator validator, double taxRate) {
+        this(validator, taxRate, Clock.systemDefaultZone());
     }
 
     /**
      * Creates a manager with a specific clock (used for testing with a fixed date).
      *
      * @param validator checks order data
-     * @param loader    reads order files
      * @param taxRate   sales tax rate from 0 to 1 (0.07 = 7%)
      * @param clock     source of today's date
      * @throws IllegalArgumentException if any argument is missing or the tax rate is out of range
      */
-    public OrderManager(OrderValidator validator, OrderFileLoader loader, double taxRate, Clock clock) {
-        if (validator == null || loader == null || clock == null) {
-            throw new IllegalArgumentException("Validator, loader and clock are required.");
+    public OrderManager(OrderValidator validator, double taxRate, Clock clock) {
+        if (validator == null || clock == null) {
+            throw new IllegalArgumentException("Validator and clock are required.");
         }
         if (!Double.isFinite(taxRate) || taxRate < 0 || taxRate > 1) {
             throw new IllegalArgumentException("Tax rate must be between 0 and 1.");
         }
         this.validator = validator;
-        this.loader = loader;
         this.taxRate = taxRate;
         this.clock = clock;
     }
@@ -99,6 +93,65 @@ public class OrderManager {
     /** @return the validator, so the user interface can show the same rules */
     public OrderValidator getValidator() {
         return validator;
+    }
+
+    // ===============================================================
+    // CONNECTING TO STORAGE
+    // ===============================================================
+
+    /**
+     * Starts using a storage (the MySQL database). If another database was
+     * connected before, its connection is closed first.
+     *
+     * @param newRepository the connected storage
+     * @return the number of orders in it
+     */
+    public int connectTo(OrderRepository newRepository) {
+        if (newRepository == null) {
+            throw new IllegalArgumentException("A repository is required.");
+        }
+        if (repository != null && repository != newRepository) {
+            repository.close();
+        }
+        repository = newRepository;
+        return repository.count();
+    }
+
+    /** @return true once a database has been connected */
+    public boolean isConnected() {
+        return repository != null;
+    }
+
+    /** @return where the data is stored, or "not connected" */
+    public String describeStorage() {
+        return repository == null ? "not connected" : repository.describe();
+    }
+
+    /**
+     * Closes the database connection (used when the program exits).
+     *
+     * @return true if a connection was closed
+     */
+    public boolean disconnect() {
+        if (repository == null) {
+            return false;
+        }
+        boolean closed = repository.close();
+        repository = null;
+        return closed;
+    }
+
+    /**
+     * Gets the storage, or stops with a clear message if none is connected.
+     *
+     * @return the connected repository
+     * @throws DataAccessException if no database is connected yet
+     */
+    private OrderRepository storage() {
+        if (repository == null) {
+            throw new DataAccessException("Not connected to a database yet. Enter your MySQL details at the top and click Connect.");
+        }
+        return repository;
     }
 
     // ===============================================================
@@ -123,8 +176,8 @@ public class OrderManager {
         if (validator.isValidOrderId(cleaned.getOrderId()) && isIdTaken(cleaned.getOrderId())) {
             errors.add("Order #" + cleaned.getOrderId() + " already exists. Order IDs must be unique.");
         }
-        if (errors.isEmpty()) {
-            orders.add(cleaned);
+        if (errors.isEmpty() && !storage().insert(cleaned)) {
+            errors.add("The database did not save order #" + cleaned.getOrderId() + ".");
         }
         return errors;
     }
@@ -153,80 +206,21 @@ public class OrderManager {
         return addOrder(order);
     }
 
-    /**
-     * Loads orders from a text file. Each line is checked separately: good
-     * lines are added and bad lines are skipped with a message explaining why,
-     * so one bad line never stops the whole file from loading.
-     *
-     * @param filePath the file name or path typed by the user
-     * @return messages for the user: a summary line followed by any skipped lines
-     */
-    public List<String> loadFromFile(String filePath) {
-        List<String> messages = new ArrayList<>();
-        List<String> lines;
-        try {
-            lines = loader.readLines(filePath);
-        } catch (IllegalArgumentException | IOException e) {
-            messages.add("Could not load the file. " + e.getMessage());
-            return messages;
-        }
-
-        int added = 0;
-        int dataLines = 0;
-        List<String> problems = new ArrayList<>();
-        for (int i = 0; i < lines.size(); i++) {
-            String line = lines.get(i);
-            if (loader.isBlankOrComment(line)) {
-                continue; // skip empty lines and # comments
-            }
-            dataLines++;
-            int lineNumber = i + 1; // people count lines from 1, not 0
-            try {
-                Order order = loader.parseLine(line);
-                List<String> errors = addOrder(order);
-                if (errors.isEmpty()) {
-                    added++;
-                } else {
-                    problems.add("Line " + lineNumber + " skipped: " + String.join(" ", errors));
-                }
-            } catch (IllegalArgumentException e) {
-                problems.add("Line " + lineNumber + " skipped: " + e.getMessage());
-            }
-        }
-
-        if (dataLines == 0) {
-            messages.add("The file was opened, but it has no order lines to load.");
-            return messages;
-        }
-        messages.add("Loaded " + added + " of " + dataLines + " orders. "
-                + problems.size() + " line(s) skipped. The system now holds " + orders.size() + " orders.");
-        // List the problems, but not thousands of them if the wrong file was chosen.
-        for (int i = 0; i < problems.size() && i < maxProblemsShown; i++) {
-            messages.add("  - " + problems.get(i));
-        }
-        if (problems.size() > maxProblemsShown) {
-            messages.add("  ...and " + (problems.size() - maxProblemsShown) + " more skipped line(s).");
-        }
-        return messages;
-    }
-
     // ===============================================================
     // READ
     // ===============================================================
 
     /**
-     * Returns copies of every order, sorted by order ID. Copies are returned
-     * so stored orders can only be changed through updateOrder().
+     * Reads every order from the database, sorted by order ID. The orders
+     * returned are copies, so the stored data only changes through
+     * addOrder(), updateOrder() and removeOrder().
      *
      * @return all orders in the system
      */
     public List<Order> getAllOrders() {
-        List<Order> copies = new ArrayList<>();
-        for (Order order : orders) {
-            copies.add(order.copy());
-        }
-        copies.sort(Comparator.comparingInt(Order::getOrderId));
-        return copies;
+        List<Order> all = storage().findAll();
+        all.sort(Comparator.comparingInt(Order::getOrderId));
+        return all;
     }
 
     /**
@@ -236,12 +230,7 @@ public class OrderManager {
      * @return a copy of the order, or an empty Optional if no order has that ID
      */
     public Optional<Order> findOrderById(int orderId) {
-        for (Order order : orders) {
-            if (order.getOrderId() == orderId) {
-                return Optional.of(order.copy());
-            }
-        }
-        return Optional.empty();
+        return storage().findById(orderId);
     }
 
     /**
@@ -254,7 +243,7 @@ public class OrderManager {
 
     /** @return how many orders are stored */
     public int getOrderCount() {
-        return orders.size();
+        return storage().count();
     }
 
     // ===============================================================
@@ -272,14 +261,14 @@ public class OrderManager {
      * @return a list of problems; an EMPTY list means the order was updated
      */
     public List<String> updateOrder(int orderId, Order updated) {
-        int index = indexOf(orderId);
-        if (index < 0) {
-            return List.of("Order #" + orderId + " was not found.");
-        }
         if (updated == null) {
             return List.of("No order was provided.");
         }
-        Order original = orders.get(index);
+        Optional<Order> found = findOrderById(orderId);
+        if (found.isEmpty()) {
+            return List.of("Order #" + orderId + " was not found.");
+        }
+        Order original = found.get();
         Order cleaned = validator.normalize(updated);
         LocalDate today = getToday();
         // An old pickup date that hasn't changed is still allowed; a new date must be today or later.
@@ -289,8 +278,8 @@ public class OrderManager {
         if (idChanged && validator.isValidOrderId(cleaned.getOrderId()) && isIdTaken(cleaned.getOrderId())) {
             errors.add("Order #" + cleaned.getOrderId() + " already exists. Order IDs must be unique.");
         }
-        if (errors.isEmpty()) {
-            orders.set(index, cleaned);
+        if (errors.isEmpty() && !storage().update(orderId, cleaned)) {
+            errors.add("The database did not update order #" + orderId + ".");
         }
         return errors;
     }
@@ -418,7 +407,7 @@ public class OrderManager {
      * @return true if an order was removed, false if no order had that ID
      */
     public boolean removeOrder(int orderId) {
-        return orders.removeIf(order -> order.getOrderId() == orderId);
+        return storage().delete(orderId);
     }
 
     // ===============================================================
@@ -457,7 +446,8 @@ public class OrderManager {
      * CUSTOM ACTION: Daily Production Report.
      * For the chosen pickup date, counts how many cakes of each type must be
      * baked and calculates the expected revenue. Only orders that are due on
-     * that date AND have not been picked up yet are counted.
+     * that date AND have not been picked up yet are counted; the database
+     * query selects exactly those orders, and the totals are calculated here.
      *
      * @param date the pickup date to report on
      * @return the finished report (with zero orders if nothing is due)
@@ -474,7 +464,8 @@ public class OrderManager {
         }
         int orderCount = 0;
         BigDecimal subtotal = BigDecimal.ZERO;
-        for (Order order : orders) {
+        for (Order order : storage().findOpenOrdersDueOn(date)) {
+            // Double-check the rule in case the storage returned extra rows.
             if (order.getPickupDate().equals(date) && !order.isPickedUp()) {
                 cakeCounts.merge(order.getCakeType(), order.getQuantity(), Integer::sum);
                 subtotal = subtotal.add(BigDecimal.valueOf(order.calculateSubtotal()));
@@ -486,20 +477,5 @@ public class OrderManager {
         double revenue = BigDecimal.valueOf(subtotalValue).add(BigDecimal.valueOf(tax))
                 .setScale(2, RoundingMode.HALF_UP).doubleValue();
         return new DailyReport(date, cakeCounts, orderCount, subtotalValue, tax, revenue, taxRate);
-    }
-
-    /**
-     * Finds where an order is stored in the list.
-     *
-     * @param orderId the order number to look for
-     * @return the position in the list, or -1 if not found
-     */
-    private int indexOf(int orderId) {
-        for (int i = 0; i < orders.size(); i++) {
-            if (orders.get(i).getOrderId() == orderId) {
-                return i;
-            }
-        }
-        return -1;
     }
 }

@@ -3,6 +3,7 @@
     <output-path>$PROJECT_DIR$/out/artifacts/BakeryOrderDMS_jar</output-path>
     <root id="archive" name="BakeryOrderDMS.jar">
       <element id="module-output" name="BakeryOrderDMS" />
+      <element id="extracted-dir" path="$MAVEN_REPOSITORY$/com/mysql/mysql-connector-j/8.0.33/mysql-connector-j-8.0.33.jar" path-in-jar="/" />
     </root>
   </artifact>
 </component>

@@ -1,13 +1,15 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026 (Phase 1); updated November 1, 2026 (Phase 3)
+ * Date:    October 19, 2026 (Phase 1); updated November 13, 2026 (Phase 4)
  * Class:   BakeryApp
  *
  * Purpose: The starting point of the Bakery Order Management System.
- *          In Phase 3 the program is used only through a graphical window,
- *          so this class builds the objects the program needs (validator,
- *          file loader, order manager) and opens the BakeryOrderWindow.
+ *          The program is used only through a graphical window. This class
+ *          builds the objects the program needs (validator, order manager,
+ *          database connector) and opens the BakeryOrderWindow. The program
+ *          does not connect to any database by itself: the user types their
+ *          own MySQL server details in the window and clicks Connect.
  *
  *          main() is the only static method in the project. Java requires
  *          the program's entry point to be static; main() simply creates a
@@ -58,8 +60,8 @@ public class BakeryApp {
         }
 
         OrderValidator validator = new OrderValidator(List.of("Chocolate", "Vanilla", "Red Velvet", "Carrot"));
-        OrderFileLoader loader = new OrderFileLoader(",", validator);
-        OrderManager manager = new OrderManager(validator, loader, taxRate);
+        OrderManager manager = new OrderManager(validator, taxRate);
+        DatabaseConnector connector = new DatabaseConnector();
 
         // Last safety net: if anything unexpected is ever thrown, show a message and keep running.
         Thread.setDefaultUncaughtExceptionHandler((thread, error) ->
@@ -69,7 +71,7 @@ public class BakeryApp {
                         "Unexpected Problem", JOptionPane.ERROR_MESSAGE)));
 
         // Swing windows must be created on Swing's own thread (the Event Dispatch Thread).
-        SwingUtilities.invokeLater(() -> new BakeryOrderWindow(manager).show());
+        SwingUtilities.invokeLater(() -> new BakeryOrderWindow(manager, connector).show());
         return true;
     }
 }

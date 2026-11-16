@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 1, 2026 (Phase 3)
+ * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4)
  * Class:   Theme
  *
  * Purpose: Keeps the look of the GUI in one place: the bakery color
@@ -25,6 +25,7 @@ import java.util.List;
 import javax.swing.BorderFactory;
 import javax.swing.JButton;
 import javax.swing.JLabel;
+import javax.swing.JPasswordField;
 import javax.swing.JTextField;
 import javax.swing.border.Border;
 import javax.swing.plaf.basic.BasicButtonUI;
@@ -247,7 +248,25 @@ public class Theme {
      * @return a text field with the bakery border and padding
      */
     public JTextField textField(int columns) {
-        JTextField field = new JTextField(columns);
+        return styleField(new JTextField(columns));
+    }
+
+    /**
+     * @param columns approximate width in characters
+     * @return a password box (shows dots instead of letters) with the bakery style
+     */
+    public JPasswordField passwordField(int columns) {
+        return styleField(new JPasswordField(columns));
+    }
+
+    /**
+     * Gives a text box the bakery font, colors, border and padding.
+     *
+     * @param field the text box to style
+     * @param <T>   the kind of text box (normal or password)
+     * @return the same text box
+     */
+    private <T extends JTextField> T styleField(T field) {
         field.setFont(body(Font.PLAIN, 14));
         field.setForeground(ink);
         field.setBackground(Color.WHITE);

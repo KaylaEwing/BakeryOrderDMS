@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 13, 2026 (Phase 4)
+ * Date:    November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   MySqlOrderRepository
  *
  * Purpose: The data layer of the DMS. Stores orders in the "orders" table
@@ -36,7 +36,30 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Stores orders in a MySQL table.
+ * Stores orders in the {@code orders} table of a MySQL database (the data layer).
+ *
+ * <p>This is the {@link OrderRepository} the real program uses. Each method runs
+ * one SQL statement:
+ * <ul>
+ *   <li>Create - {@code INSERT INTO orders ...}</li>
+ *   <li>Read - {@code SELECT ... FROM orders}</li>
+ *   <li>Update - {@code UPDATE orders SET ... WHERE order_id = ?}</li>
+ *   <li>Delete - {@code DELETE FROM orders WHERE order_id = ?}</li>
+ *   <li>Report - {@code SELECT ... WHERE pickup_date = ? AND is_picked_up = FALSE}</li>
+ * </ul>
+ * Every query is a {@link java.sql.PreparedStatement} with {@code ?} placeholders,
+ * so text typed by the user can never change the SQL (no SQL injection).
+ * Changes are saved as soon as each statement runs, so they can be seen right away
+ * in MySQL Workbench or the MySQL command line.
+ *
+ * <p>Objects of this class are created by {@link DatabaseConnector} and used only
+ * through {@link OrderManager}. The table and column names are fixed because the
+ * {@code bakery_dms.sql} script creates them. Every {@link java.sql.SQLException}
+ * is turned into a {@link DataAccessException} with a plain-English message.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class MySqlOrderRepository implements OrderRepository {
 
@@ -55,6 +78,7 @@ public class MySqlOrderRepository implements OrderRepository {
      *
      * @param connection  an open connection to the bakery database
      * @param description where the database is, for status messages
+     * @throws IllegalArgumentException if the connection is null
      */
     public MySqlOrderRepository(Connection connection, String description) {
         if (connection == null) {
@@ -68,6 +92,7 @@ public class MySqlOrderRepository implements OrderRepository {
      * READ: every order in the table, sorted by order ID.
      *
      * @return all orders
+     * @throws DataAccessException if the database cannot be reached or rejects the statement (the message explains why)
      */
     @Override
     public List<Order> findAll() {
@@ -85,6 +110,7 @@ public class MySqlOrderRepository implements OrderRepository {
      *
      * @param orderId the order number to look for
      * @return the order, or empty if there is no such order
+     * @throws DataAccessException if the database cannot be reached or rejects the statement (the message explains why)
      */
     @Override
     public Optional<Order> findById(int orderId) {
@@ -104,6 +130,7 @@ public class MySqlOrderRepository implements OrderRepository {
      *
      * @param pickupDate the pickup date
      * @return the matching orders, sorted by order ID
+     * @throws DataAccessException if the database cannot be reached or rejects the statement (the message explains why)
      */
     @Override
     public List<Order> findOpenOrdersDueOn(LocalDate pickupDate) {
@@ -124,6 +151,7 @@ public class MySqlOrderRepository implements OrderRepository {
      *
      * @param order the validated order
      * @return true if one row was inserted
+     * @throws DataAccessException if the order ID is already used, a value breaks a database rule, or the database cannot be reached
      */
     @Override
     public boolean insert(Order order) {
@@ -146,6 +174,7 @@ public class MySqlOrderRepository implements OrderRepository {
      * @param orderId the ID the order has now
      * @param order   the new values
      * @return true if one row was changed
+     * @throws DataAccessException if the new order ID is already used, a value breaks a database rule, or the database cannot be reached
      */
     @Override
     public boolean update(int orderId, Order order) {
@@ -166,6 +195,7 @@ public class MySqlOrderRepository implements OrderRepository {
      *
      * @param orderId the order to remove
      * @return true if a row was removed
+     * @throws DataAccessException if the database cannot be reached or rejects the statement (the message explains why)
      */
     @Override
     public boolean delete(int orderId) {
@@ -178,7 +208,10 @@ public class MySqlOrderRepository implements OrderRepository {
     }
 
     /**
+     * Counts the stored orders.
+     *
      * @return the number of rows in the orders table
+     * @throws DataAccessException if the orders table is missing or the database cannot be reached
      */
     @Override
     public int count() {
@@ -190,7 +223,11 @@ public class MySqlOrderRepository implements OrderRepository {
         }
     }
 
-    /** @return where the database is, e.g. "bakery_dms on localhost:3306" */
+    /**
+     * Returns where the database is, e.g. "bakery_dms on localhost:3306".
+     *
+     * @return where the database is, e.g. "bakery_dms on localhost:3306"
+     */
     @Override
     public String describe() {
         return description;

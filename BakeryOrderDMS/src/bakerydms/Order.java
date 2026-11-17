@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2); documented November 16, 2026 (Module 11)
  * Class:   Order
  *
  * Purpose: Represents one custom cake order placed at the bakery. This is the
@@ -20,7 +20,25 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 
 /**
- * A single custom cake order.
+ * One custom cake order, the object the whole system manages.
+ *
+ * <p>An order has nine attributes: order ID, customer name, phone number,
+ * cake type, quantity, unit price, pickup date, picked-up status and special
+ * instructions. Each one is a column in the {@code orders} database table.
+ * This class only holds data and does simple math ({@link #calculateSubtotal()}).
+ * The rules for valid values are in {@link OrderValidator}, and
+ * {@link OrderManager} checks every order before it is stored.
+ *
+ * <p>Example:
+ * <pre>{@code
+ * Order order = new Order(1026, "Dana Lee", "407-555-9876", "Red Velvet", 2, 28.00,
+ *         LocalDate.of(2027, 2, 13), false, "Write Happy Birthday, Dana!");
+ * double subtotal = order.calculateSubtotal(); // 56.00
+ * }</pre>
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class Order {
 
@@ -118,47 +136,83 @@ public class Order {
     // Getters: return the value of each attribute.
     // ---------------------------------------------------------------
 
-    /** @return the unique order number */
+    /**
+     * Returns the unique order number.
+     *
+     * @return the unique order number
+     */
     public int getOrderId() {
         return orderId;
     }
 
-    /** @return the customer's full name */
+    /**
+     * Returns the customer's full name.
+     *
+     * @return the customer's full name
+     */
     public String getCustomerName() {
         return customerName;
     }
 
-    /** @return the customer's phone number */
+    /**
+     * Returns the customer's phone number.
+     *
+     * @return the customer's phone number
+     */
     public String getPhoneNumber() {
         return phoneNumber;
     }
 
-    /** @return the type of cake ordered */
+    /**
+     * Returns the type of cake ordered.
+     *
+     * @return the type of cake ordered
+     */
     public String getCakeType() {
         return cakeType;
     }
 
-    /** @return the number of cakes ordered */
+    /**
+     * Returns the number of cakes ordered.
+     *
+     * @return the number of cakes ordered
+     */
     public int getQuantity() {
         return quantity;
     }
 
-    /** @return the price of one cake in dollars */
+    /**
+     * Returns the price of one cake in dollars.
+     *
+     * @return the price of one cake in dollars
+     */
     public double getUnitPrice() {
         return unitPrice;
     }
 
-    /** @return the date the order will be collected */
+    /**
+     * Returns the date the order will be collected.
+     *
+     * @return the date the order will be collected
+     */
     public LocalDate getPickupDate() {
         return pickupDate;
     }
 
-    /** @return true if the customer has collected the order */
+    /**
+     * Returns true if the customer has collected the order.
+     *
+     * @return true if the customer has collected the order
+     */
     public boolean isPickedUp() {
         return pickedUp;
     }
 
-    /** @return the special instructions, or an empty string if there are none */
+    /**
+     * Returns the special instructions, or an empty string if there are none.
+     *
+     * @return the special instructions, or an empty string if there are none
+     */
     public String getSpecialInstructions() {
         return specialInstructions;
     }
@@ -168,47 +222,83 @@ public class Order {
     // void methods in the program (besides main), as planned in the UML.
     // ---------------------------------------------------------------
 
-    /** @param orderId the new unique order number */
+    /**
+     * Changes the unique order number.
+     *
+     * @param orderId the new unique order number
+     */
     public void setOrderId(int orderId) {
         this.orderId = orderId;
     }
 
-    /** @param customerName the new customer name */
+    /**
+     * Changes the customer name.
+     *
+     * @param customerName the new customer name
+     */
     public void setCustomerName(String customerName) {
         this.customerName = customerName;
     }
 
-    /** @param phoneNumber the new phone number */
+    /**
+     * Changes the phone number.
+     *
+     * @param phoneNumber the new phone number
+     */
     public void setPhoneNumber(String phoneNumber) {
         this.phoneNumber = phoneNumber;
     }
 
-    /** @param cakeType the new cake type */
+    /**
+     * Changes the cake type.
+     *
+     * @param cakeType the new cake type
+     */
     public void setCakeType(String cakeType) {
         this.cakeType = cakeType;
     }
 
-    /** @param quantity the new number of cakes */
+    /**
+     * Changes the number of cakes.
+     *
+     * @param quantity the new number of cakes
+     */
     public void setQuantity(int quantity) {
         this.quantity = quantity;
     }
 
-    /** @param unitPrice the new price of one cake */
+    /**
+     * Changes the price of one cake.
+     *
+     * @param unitPrice the new price of one cake
+     */
     public void setUnitPrice(double unitPrice) {
         this.unitPrice = unitPrice;
     }
 
-    /** @param pickupDate the new pickup date */
+    /**
+     * Changes the pickup date.
+     *
+     * @param pickupDate the new pickup date
+     */
     public void setPickupDate(LocalDate pickupDate) {
         this.pickupDate = pickupDate;
     }
 
-    /** @param pickedUp true if the order has been collected */
+    /**
+     * Marks whether the customer has collected the order.
+     *
+     * @param pickedUp true if the order has been collected
+     */
     public void setPickedUp(boolean pickedUp) {
         this.pickedUp = pickedUp;
     }
 
-    /** @param specialInstructions the new notes for the baker (null is stored as empty) */
+    /**
+     * Changes the notes for the baker. A null value is stored as an empty string.
+     *
+     * @param specialInstructions the new notes for the baker (null is stored as empty)
+     */
     public void setSpecialInstructions(String specialInstructions) {
         this.specialInstructions = (specialInstructions == null) ? "" : specialInstructions;
     }

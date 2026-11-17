@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2); documented November 16, 2026 (Module 11)
  * Class:   DailyReport
  *
  * Purpose: Holds the result of the custom action, the Daily Production
@@ -22,14 +22,27 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * The calculated result of the Daily Production Report.
+ * The result of the custom action, the Daily Production Report.
+ *
+ * <p>For one pickup date the report holds how many cakes of each type the
+ * baker must make and how much money the bakery expects to take in. Only
+ * orders that have not been picked up are counted. A report is created by
+ * {@link OrderManager#generateDailyReport(java.time.LocalDate)} and shown by
+ * {@link BakeryOrderWindow}. Once created it cannot be changed.
+ *
+ * <p>Example: if 10 cakes are due with a subtotal of $265.00 and a 7% tax rate,
+ * {@link #getTax()} returns 18.55 and {@link #getExpectedRevenue()} returns 283.55.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class DailyReport {
 
     /** The pickup date the report covers. */
     private final LocalDate reportDate;
 
-    /** Number of cakes to bake for each cake type, in menu order. */
+    /** Number of cakes to bake for each cake type, in the order the cake list shows them. */
     private final Map<String, Integer> cakeCounts;
 
     /** Number of open (not picked up) orders due on the report date. */
@@ -70,32 +83,56 @@ public class DailyReport {
         this.taxRate = taxRate;
     }
 
-    /** @return the pickup date the report covers */
+    /**
+     * Returns the pickup date the report covers.
+     *
+     * @return the pickup date the report covers
+     */
     public LocalDate getReportDate() {
         return reportDate;
     }
 
-    /** @return a read-only map of cake type to number of cakes */
+    /**
+     * Returns a read-only map of cake type to number of cakes.
+     *
+     * @return a read-only map of cake type to number of cakes
+     */
     public Map<String, Integer> getCakeCounts() {
         return cakeCounts;
     }
 
-    /** @return the number of open orders due on the report date */
+    /**
+     * Returns the number of open orders due on the report date.
+     *
+     * @return the number of open orders due on the report date
+     */
     public int getOrderCount() {
         return orderCount;
     }
 
-    /** @return the total before tax */
+    /**
+     * Returns the total before tax.
+     *
+     * @return the total before tax
+     */
     public double getSubtotal() {
         return subtotal;
     }
 
-    /** @return the sales tax amount */
+    /**
+     * Returns the sales tax amount.
+     *
+     * @return the sales tax amount
+     */
     public double getTax() {
         return tax;
     }
 
-    /** @return the subtotal plus tax */
+    /**
+     * Returns the subtotal plus tax.
+     *
+     * @return the subtotal plus tax
+     */
     public double getExpectedRevenue() {
         return expectedRevenue;
     }
@@ -114,6 +151,8 @@ public class DailyReport {
     }
 
     /**
+     * Tells whether the report has anything to bake.
+     *
      * @return true if at least one open order is due on the report date
      */
     public boolean hasOrders() {

@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4)
+ * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   OrderTableModel
  *
  * Purpose: Connects the list of orders to the JTable on screen. The table
@@ -17,7 +17,18 @@ import java.util.Optional;
 import javax.swing.table.AbstractTableModel;
 
 /**
- * Supplies order data to the JTable.
+ * Supplies order data to the {@link javax.swing.JTable} in {@link BakeryOrderWindow}.
+ *
+ * <p>The table model is the bridge between the business logic and the screen:
+ * {@link #refresh()} reloads every order from {@link OrderManager}, and the
+ * table asks this class for each cell. It shows ten columns, including each
+ * order's total with tax, which is calculated by {@link OrderManager} and not
+ * stored in the database. It holds copies of the orders, so the screen can
+ * never change stored data directly.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 @SuppressWarnings("serial") // the table model is never saved to disk
 public class OrderTableModel extends AbstractTableModel {
@@ -47,6 +58,7 @@ public class OrderTableModel extends AbstractTableModel {
      * and redraws the table.
      *
      * @return the number of orders now shown
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public int refresh() {
         rows.clear();
@@ -94,19 +106,29 @@ public class OrderTableModel extends AbstractTableModel {
         return -1;
     }
 
-    /** @return the number of rows */
+    /**
+     * Returns the number of rows.
+     *
+     * @return the number of rows
+     */
     @Override
     public int getRowCount() {
         return rows.size();
     }
 
-    /** @return the number of columns */
+    /**
+     * Returns the number of columns.
+     *
+     * @return the number of columns
+     */
     @Override
     public int getColumnCount() {
         return columns.length;
     }
 
     /**
+     * Gives the title shown at the top of a column.
+     *
      * @param column column number
      * @return the column's title
      */

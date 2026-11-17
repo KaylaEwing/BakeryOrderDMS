@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4)
+ * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   BakeryOrderWindow
  *
  * Purpose: The graphical user interface (GUI) of the Bakery Order
@@ -85,7 +85,37 @@ import javax.swing.table.JTableHeader;
 import javax.swing.table.TableRowSorter;
 
 /**
- * The main window of the bakery program.
+ * The main window of the program and the only screen the user works with
+ * (the presentation layer).
+ *
+ * <p>The window has five areas:
+ * <ul>
+ *   <li><b>Database bar</b> - server, port, database, username, password and Connect.</li>
+ *   <li><b>Order form</b> - Add, Update, Delete and Clear for one order.</li>
+ *   <li><b>Order table</b> - every order in the database, with Search, Show All and Refresh.</li>
+ *   <li><b>Report bar</b> - the Daily Production Report (the custom action).</li>
+ *   <li><b>Status bar</b> - the result of the last action, green or red.</li>
+ * </ul>
+ *
+ * <p>The window never stores or checks data itself. Every action is passed to
+ * {@link OrderManager}, which validates it with {@link OrderValidator} and saves
+ * it through the {@link OrderRepository} that {@link DatabaseConnector} opened.
+ * Each button handler runs inside {@code safely(...)}, so a database error or an
+ * unexpected problem is shown in a message box and the program keeps running.
+ * Typed values are checked before anything is saved: problems are listed in a
+ * message box and the matching fields are outlined in red.
+ *
+ * <p>Usage (this is what {@link BakeryApp} does):
+ * <pre>{@code
+ * BakeryOrderWindow window = new BakeryOrderWindow(manager, new DatabaseConnector());
+ * SwingUtilities.invokeLater(window::show);
+ * }</pre>
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ * @see OrderManager
+ * @see Theme
  */
 public class BakeryOrderWindow {
 
@@ -101,37 +131,61 @@ public class BakeryOrderWindow {
     private final JFrame frame = new JFrame("Bakery Order Manager");
 
     // ---- Table ----
+    /** Holds the orders shown in the table. */
     private final OrderTableModel tableModel;
+    /** The table that lists every order in the database. */
     private final JTable table;
+    /** Sorts the table when a column header is clicked, and filters it for Search. */
     private final TableRowSorter<OrderTableModel> sorter;
+    /** Shows how many orders are listed, under the table title. */
     private final JLabel countLabel = new JLabel();
 
     // ---- Database bar ----
+    /** Server address box (for example localhost). */
     private final JTextField hostField;
+    /** Port number box (MySQL normally uses 3306). */
     private final JTextField portField;
+    /** Database name box (the script creates bakery_dms). */
     private final JTextField databaseField;
+    /** MySQL username box. */
     private final JTextField userField;
+    /** MySQL password box. The password is never saved. */
     private final JPasswordField passwordField;
+    /** Green or red tag in the header showing whether a database is connected. */
     private final JLabel connectionPill = new JLabel();
 
     // ---- Search ----
+    /** Box for the Search button: an order ID, customer name or cake type. */
     private final JTextField searchField;
 
     // ---- Order form ----
+    /** Order ID box on the form. */
     private final JTextField idField;
+    /** Customer name box on the form. */
     private final JTextField nameField;
+    /** Phone number box on the form. */
     private final JTextField phoneField;
+    /** Drop-down list of the cake types the bakery sells. */
     private final JComboBox<String> cakeBox;
+    /** Quantity box; its arrows only allow 1 to 50. */
     private final JSpinner quantitySpinner = new JSpinner(new SpinnerNumberModel(1, 1, 50, 1));
+    /** Unit price box on the form. */
     private final JTextField priceField;
+    /** Pickup date box on the form. */
     private final JTextField dateField;
+    /** Checkbox for whether the customer has collected the order. */
     private final JCheckBox pickedUpBox = new JCheckBox("Customer has picked up this order");
+    /** Special instructions box on the form. */
     private final JTextField notesField;
+    /** Tag above the form that says NEW ORDER or EDITING #1001. */
     private final JLabel modeLabel = new JLabel();
+    /** Short message under the form buttons after Add, Update or Delete. */
     private final JLabel formMessage = new JLabel(" ");
 
     // ---- Report bar and status bar ----
+    /** Pickup date box for the Daily Production Report. */
     private final JTextField reportDateField;
+    /** Status bar at the bottom of the window: green for success, red for a problem. */
     private final JLabel statusLabel = new JLabel();
 
     /** The ID of the order being edited, or -1 when the form is for a new order. */
@@ -659,6 +713,7 @@ public class BakeryOrderWindow {
      * program (for example in MySQL Workbench) appear.
      *
      * @return true if the table was reloaded
+     * @throws DataAccessException if no database is connected yet, or the connection was lost; the Refresh button shows the message in a dialog
      */
     public boolean refreshFromDatabase() {
         if (!manager.isConnected()) {
@@ -709,6 +764,7 @@ public class BakeryOrderWindow {
      * as "not picked up".
      *
      * @return true if the order was added
+     * @throws DataAccessException if the database cannot be reached; the button handler shows the message in a dialog
      */
     public boolean addOrder() {
         List<String> problems = new ArrayList<>();
@@ -737,6 +793,7 @@ public class BakeryOrderWindow {
      * field can be changed, including the Order ID.
      *
      * @return true if the order was updated
+     * @throws DataAccessException if the database cannot be reached; the button handler shows the message in a dialog
      */
     public boolean updateOrder() {
         if (selectedId < 0) {
@@ -765,6 +822,7 @@ public class BakeryOrderWindow {
      * Deletes the order whose ID is in the Order ID box, after the user confirms.
      *
      * @return true if an order was deleted
+     * @throws DataAccessException if the database cannot be reached; the button handler shows the message in a dialog
      */
     public boolean deleteOrder() {
         String idText = idField.getText().trim();
@@ -862,6 +920,7 @@ public class BakeryOrderWindow {
      * the report box and shows the calculation in a window.
      *
      * @return true if a report was shown
+     * @throws DataAccessException if the database cannot be reached; the button handler shows the message in a dialog
      */
     public boolean generateReport() {
         String text = reportDateField.getText().trim();
@@ -1330,24 +1389,39 @@ public class BakeryOrderWindow {
         }
     }
 
-    /** @param amount dollars @return the amount as text, e.g. "$1,234.50" */
+    /**
+     * Formats an amount of money for display, with a dollar sign and two decimals.
+     *
+     * @param amount dollars
+     * @return the amount as text, e.g. "$1,234.50"
+     */
     private String money(double amount) {
         return String.format("$%,.2f", amount);
     }
 
-    /** @param text any text @return the text cut to 30 characters so messages stay short */
+    /**
+     * Shortens text that will be quoted back to the user, so messages stay readable.
+     *
+     * @param text any text
+     * @return the text cut to 30 characters so messages stay short
+     */
     private String shorten(String text) {
         return text.length() <= 30 ? text : text.substring(0, 27) + "...";
     }
 
-    /** @param text a long message @return the message with line breaks so the dialog isn't too wide */
+    /**
+     * Wraps a long message onto several lines so a message box does not stretch across the screen.
+     *
+     * @param text a long message
+     * @return the message with line breaks so the dialog isn't too wide
+     */
     private String wrap(String text) {
         return text.replace(". ", ".\n");
     }
 
     /**
      * Makes text safe to put inside the HTML used for labels (so a name like
-     * "<b>" typed by a user is shown as text, not treated as formatting).
+     * "&lt;b&gt;" typed by a user is shown as text, not treated as formatting).
      *
      * @param text the text
      * @return the escaped text
@@ -1366,6 +1440,13 @@ public class BakeryOrderWindow {
      */
     @SuppressWarnings("serial") // Swing renderers are never saved to disk
     private class OrderCellRenderer extends DefaultTableCellRenderer {
+
+        /**
+         * Creates the renderer used for every cell of the order table.
+         */
+        OrderCellRenderer() {
+            super();
+        }
 
         /**
          * Styles one cell before it is drawn.
@@ -1405,6 +1486,13 @@ public class BakeryOrderWindow {
      */
     @SuppressWarnings("serial") // Swing renderers are never saved to disk
     private class HeaderRenderer extends DefaultTableCellRenderer {
+
+        /**
+         * Creates the renderer used for the order table's column headers.
+         */
+        HeaderRenderer() {
+            super();
+        }
 
         /**
          * Styles one header cell before it is drawn.

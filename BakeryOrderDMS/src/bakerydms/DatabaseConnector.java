@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 13, 2026 (Phase 4)
+ * Date:    November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   DatabaseConnector
  *
  * Purpose: Connects the program to the user's MySQL database. Nothing about
@@ -28,7 +28,34 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Checks connection details and opens the MySQL database.
+ * Connects the program to the user's MySQL database.
+ *
+ * <p>Nothing about the database's location or login is written in the code.
+ * The user types the server address, port, database name, username and
+ * password in {@link BakeryOrderWindow}, and this class:
+ * <ol>
+ *   <li>checks every value with {@link #validate(String, String, String, String, char[])},</li>
+ *   <li>builds the JDBC connection string by concatenation with
+ *       {@link #buildUrl(String, int, String)},</li>
+ *   <li>opens the connection and checks that the {@code orders} table exists, and</li>
+ *   <li>returns a {@link MySqlOrderRepository} for {@link OrderManager} to use.</li>
+ * </ol>
+ * Any failure (wrong password, MySQL not running, database missing) is thrown
+ * as a {@link DataAccessException} with a plain-English message. This class
+ * needs the MySQL Connector/J driver on the classpath.
+ *
+ * <p>Usage:
+ * <pre>{@code
+ * DatabaseConnector connector = new DatabaseConnector();
+ * OrderRepository database = connector.connect("localhost", "3306", "bakery_dms",
+ *         "root", passwordTypedByUser);
+ * int orderCount = manager.connectTo(database);
+ * }</pre>
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ * @see MySqlOrderRepository
  */
 public class DatabaseConnector {
 
@@ -46,7 +73,20 @@ public class DatabaseConnector {
     private final String options = "?connectTimeout=" + connectTimeoutMillis
             + "&socketTimeout=30000&useSSL=false&allowPublicKeyRetrieval=true&characterEncoding=UTF-8";
 
-    /** @return the standard MySQL port, 3306 */
+    /**
+     * Creates a connector. It does not connect to anything until
+     * {@link #connect(String, String, String, String, char[])} is called with
+     * the details the user typed.
+     */
+    public DatabaseConnector() {
+        // nothing to set up: every field is given its value where it is declared
+    }
+
+    /**
+     * Returns the standard MySQL port, 3306.
+     *
+     * @return the standard MySQL port, 3306
+     */
     public int getDefaultPort() {
         return defaultPort;
     }
@@ -279,7 +319,12 @@ public class DatabaseConnector {
         return true;
     }
 
-    /** @param text any text @return the text cut to 30 characters */
+    /**
+     * Shortens text that will be quoted back to the user in an error message.
+     *
+     * @param text any text
+     * @return the text cut to 30 characters
+     */
     private String shorten(String text) {
         return text.length() <= 30 ? text : text.substring(0, 27) + "...";
     }

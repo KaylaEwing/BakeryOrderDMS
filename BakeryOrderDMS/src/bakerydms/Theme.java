@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4)
+ * Date:    November 1, 2026 (Phase 3); updated November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   Theme
  *
  * Purpose: Keeps the look of the GUI in one place: the bakery color
@@ -31,7 +31,17 @@ import javax.swing.border.Border;
 import javax.swing.plaf.basic.BasicButtonUI;
 
 /**
- * Colors, fonts and styled components for the bakery GUI.
+ * The look of the program: colors, fonts and ready-styled Swing components.
+ *
+ * <p>{@link BakeryOrderWindow} creates every button, label and text box
+ * through this class, so the whole window keeps the same bakery colors
+ * (raspberry, cream and dark brown) and fonts. Changing a color here changes
+ * it everywhere. The fonts are picked from what the computer has installed,
+ * with standard Java fonts as a fallback.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class Theme {
 
@@ -97,30 +107,72 @@ public class Theme {
 
     // ---- Color getters ----
 
-    /** @return the dark ink color */
+    /**
+     * Returns the dark ink color.
+     *
+     * @return the dark ink color
+     */
     public Color getInk() { return ink; }
-    /** @return the cream background color */
+    /**
+     * Returns the cream background color.
+     *
+     * @return the cream background color
+     */
     public Color getCream() { return cream; }
-    /** @return the darker cream color */
+    /**
+     * Returns the darker cream color.
+     *
+     * @return the darker cream color
+     */
     public Color getCreamDark() { return creamDark; }
-    /** @return the card background color */
+    /**
+     * Returns the card background color.
+     *
+     * @return the card background color
+     */
     public Color getCard() { return card; }
-    /** @return the border color */
+    /**
+     * Returns the border color.
+     *
+     * @return the border color
+     */
     public Color getLine() { return line; }
-    /** @return the muted text color */
+    /**
+     * Returns the muted text color.
+     *
+     * @return the muted text color
+     */
     public Color getMuted() { return muted; }
-    /** @return the raspberry accent color */
+    /**
+     * Returns the raspberry accent color.
+     *
+     * @return the raspberry accent color
+     */
     public Color getRaspberry() { return raspberry; }
-    /** @return the pale pink color */
+    /**
+     * Returns the pale pink color.
+     *
+     * @return the pale pink color
+     */
     public Color getPink() { return pink; }
-    /** @return the success green color */
+    /**
+     * Returns the success green color.
+     *
+     * @return the success green color
+     */
     public Color getGreen() { return green; }
-    /** @return the error red color */
+    /**
+     * Returns the error red color.
+     *
+     * @return the error red color
+     */
     public Color getError() { return error; }
 
     // ---- Fonts ----
 
     /**
+     * Creates the font used for normal text.
+     *
      * @param style Font.PLAIN, Font.BOLD or Font.ITALIC
      * @param size  point size
      * @return the body font in that style and size
@@ -130,6 +182,8 @@ public class Theme {
     }
 
     /**
+     * Creates the font used for titles and headings.
+     *
      * @param size point size
      * @return the bold title font
      */
@@ -138,6 +192,8 @@ public class Theme {
     }
 
     /**
+     * Creates a fixed-width font.
+     *
      * @param size point size
      * @return a fixed-width font, used where numbers must line up
      */
@@ -147,27 +203,52 @@ public class Theme {
 
     // ---- Buttons ----
 
-    /** @param text button text @return a raspberry button for the main action on a panel */
+    /**
+     * Creates the raspberry-colored button used for the main action on a panel (Add Order, Connect, Generate Report).
+     *
+     * @param text button text
+     * @return a raspberry button for the main action on a panel
+     */
     public JButton primaryButton(String text) {
         return button(text, raspberry, Color.WHITE, raspberry.darker());
     }
 
-    /** @param text button text @return a blue button (used for Update) */
+    /**
+     * Creates the blue button used for Update Order.
+     *
+     * @param text button text
+     * @return a blue button (used for Update)
+     */
     public JButton blueButton(String text) {
         return button(text, blue, Color.WHITE, blue.darker());
     }
 
-    /** @param text button text @return a light button with a dark outline */
+    /**
+     * Creates a light button with a dark outline, used for less important actions (Clear Form, Search, Show All, Refresh).
+     *
+     * @param text button text
+     * @return a light button with a dark outline
+     */
     public JButton secondaryButton(String text) {
         return button(text, card, ink, line);
     }
 
-    /** @param text button text @return a dark button with a pink outline, for the dark header (Exit) */
+    /**
+     * Creates a dark button with a pink outline that stands out on the dark header (Exit).
+     *
+     * @param text button text
+     * @return a dark button with a pink outline, for the dark header (Exit)
+     */
     public JButton headerButton(String text) {
         return button(text, ink, cream, pink);
     }
 
-    /** @param text button text @return a light button with a red outline (used for Delete) */
+    /**
+     * Creates a light button with a red outline, used for Delete Order so it looks different from the safe actions.
+     *
+     * @param text button text
+     * @return a light button with a red outline (used for Delete)
+     */
     public JButton dangerButton(String text) {
         return button(text, card, raspberry, raspberry);
     }
@@ -219,7 +300,12 @@ public class Theme {
 
     // ---- Labels and text fields ----
 
-    /** @param text label text @return a bold label for a form field */
+    /**
+     * Creates the bold label shown beside a form field.
+     *
+     * @param text label text
+     * @return a bold label for a form field
+     */
     public JLabel fieldLabel(String text) {
         JLabel label = new JLabel(text);
         label.setFont(body(Font.BOLD, 13));
@@ -227,7 +313,12 @@ public class Theme {
         return label;
     }
 
-    /** @param text hint text @return a small gray hint shown under a field */
+    /**
+     * Creates the small gray hint shown under a field label, such as "1000-9999".
+     *
+     * @param text hint text
+     * @return a small gray hint shown under a field
+     */
     public JLabel hint(String text) {
         JLabel label = new JLabel(text);
         label.setFont(body(Font.PLAIN, 11));
@@ -235,7 +326,12 @@ public class Theme {
         return label;
     }
 
-    /** @param text heading text @return a section heading such as "Order Details" */
+    /**
+     * Creates a section heading in the title font.
+     *
+     * @param text heading text
+     * @return a section heading such as "Order Details"
+     */
     public JLabel heading(String text) {
         JLabel label = new JLabel(text);
         label.setFont(title(18));
@@ -244,6 +340,8 @@ public class Theme {
     }
 
     /**
+     * Creates a text box in the bakery style.
+     *
      * @param columns approximate width in characters
      * @return a text field with the bakery border and padding
      */
@@ -252,6 +350,8 @@ public class Theme {
     }
 
     /**
+     * Creates a password box in the bakery style.
+     *
      * @param columns approximate width in characters
      * @return a password box (shows dots instead of letters) with the bakery style
      */

@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026 (Phase 1); updated November 13, 2026 (Phase 4)
+ * Date:    October 19, 2026 (Phase 1); updated November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   OrderManager
  *
  * Purpose: The business logic layer of the DMS. It checks every order and
@@ -34,7 +34,35 @@ import java.util.Map;
 import java.util.Optional;
 
 /**
- * Stores orders and performs CRUD operations and the daily report on them.
+ * Carries out every action on orders (the business logic layer).
+ *
+ * <p>The window calls this class for each CRUD operation and for the custom
+ * action. OrderManager:
+ * <ul>
+ *   <li>checks every value with {@link OrderValidator} before anything is stored,</li>
+ *   <li>stores and reads orders through an {@link OrderRepository} (the MySQL database
+ *       in the real program, or an in-memory copy in the unit tests),</li>
+ *   <li>calculates order totals with tax, and</li>
+ *   <li>builds the {@link DailyReport} for the Daily Production Report.</li>
+ * </ul>
+ * Methods that change data return a list of problems; an empty list means
+ * the change was saved. Until {@link #connectTo(OrderRepository)} is called,
+ * data methods throw a {@link DataAccessException} saying no database is connected.
+ *
+ * <p>Usage:
+ * <pre>{@code
+ * OrderManager manager = new OrderManager(new OrderValidator(cakeTypes), 0.07);
+ * manager.connectTo(connector.connect("localhost", "3306", "bakery_dms", "root", password));
+ * List<String> problems = manager.addOrder(1026, "Dana Lee", "4075559876", "Red Velvet",
+ *         2, 28.00, LocalDate.of(2027, 2, 13), "Write Happy Birthday, Dana!");
+ * DailyReport report = manager.generateDailyReport(LocalDate.of(2027, 2, 13));
+ * }</pre>
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ * @see OrderRepository
+ * @see BakeryOrderWindow
  */
 public class OrderManager {
 
@@ -80,17 +108,29 @@ public class OrderManager {
         this.clock = clock;
     }
 
-    /** @return today's date according to the manager's clock */
+    /**
+     * Returns today's date according to the manager's clock.
+     *
+     * @return today's date according to the manager's clock
+     */
     public LocalDate getToday() {
         return LocalDate.now(clock);
     }
 
-    /** @return the sales tax rate (0.07 = 7%) */
+    /**
+     * Returns the sales tax rate (0.07 = 7%).
+     *
+     * @return the sales tax rate (0.07 = 7%)
+     */
     public double getTaxRate() {
         return taxRate;
     }
 
-    /** @return the validator, so the user interface can show the same rules */
+    /**
+     * Returns the validator, so the user interface can show the same rules.
+     *
+     * @return the validator, so the user interface can show the same rules
+     */
     public OrderValidator getValidator() {
         return validator;
     }
@@ -105,6 +145,7 @@ public class OrderManager {
      *
      * @param newRepository the connected storage
      * @return the number of orders in it
+     * @throws IllegalArgumentException if the repository is null
      */
     public int connectTo(OrderRepository newRepository) {
         if (newRepository == null) {
@@ -117,12 +158,20 @@ public class OrderManager {
         return repository.count();
     }
 
-    /** @return true once a database has been connected */
+    /**
+     * Returns true once a database has been connected.
+     *
+     * @return true once a database has been connected
+     */
     public boolean isConnected() {
         return repository != null;
     }
 
-    /** @return where the data is stored, or "not connected" */
+    /**
+     * Returns where the data is stored, or "not connected".
+     *
+     * @return where the data is stored, or "not connected"
+     */
     public String describeStorage() {
         return repository == null ? "not connected" : repository.describe();
     }
@@ -164,6 +213,7 @@ public class OrderManager {
      *
      * @param order the order to add
      * @return a list of problems; an EMPTY list means the order was added
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public List<String> addOrder(Order order) {
         if (order == null) {
@@ -197,6 +247,7 @@ public class OrderManager {
      * @param pickupDate          date the order will be collected
      * @param specialInstructions notes for the baker (may be empty)
      * @return a list of problems; an EMPTY list means the order was added
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public List<String> addOrder(int orderId, String customerName, String phoneNumber, String cakeType,
                                  int quantity, double unitPrice, LocalDate pickupDate,
@@ -216,6 +267,7 @@ public class OrderManager {
      * addOrder(), updateOrder() and removeOrder().
      *
      * @return all orders in the system
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public List<Order> getAllOrders() {
         List<Order> all = storage().findAll();
@@ -228,20 +280,29 @@ public class OrderManager {
      *
      * @param orderId the order number to look for
      * @return a copy of the order, or an empty Optional if no order has that ID
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public Optional<Order> findOrderById(int orderId) {
         return storage().findById(orderId);
     }
 
     /**
+     * Checks whether an order ID is already in use, so a new order cannot reuse it.
+     *
      * @param orderId the order number to check
      * @return true if an order with this ID is already stored
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public boolean isIdTaken(int orderId) {
         return findOrderById(orderId).isPresent();
     }
 
-    /** @return how many orders are stored */
+    /**
+     * Returns how many orders are stored.
+     *
+     * @return how many orders are stored
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
+     */
     public int getOrderCount() {
         return storage().count();
     }
@@ -259,6 +320,7 @@ public class OrderManager {
      * @param orderId the ID of the order to change
      * @param updated the edited order
      * @return a list of problems; an EMPTY list means the order was updated
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public List<String> updateOrder(int orderId, Order updated) {
         if (updated == null) {
@@ -287,17 +349,22 @@ public class OrderManager {
     /**
      * Changes ONE field of an order using exactly what the user typed.
      * The text is converted to the right data type here, then the whole
-     * order is checked by updateOrder() before anything is saved, so a bad
-     * value never changes the stored order.
+     * order is checked by {@link #updateOrder(int, Order)} before anything is
+     * saved, so a bad value never changes the stored order. The unit tests use
+     * this method to prove every one of the nine fields can be updated.
      *
-     * Field numbers (the same numbers shown in the update menu):
-     *   1 Order ID, 2 Customer name, 3 Phone number, 4 Cake type, 5 Quantity,
-     *   6 Unit price, 7 Pickup date, 8 Picked up, 9 Special instructions
+     * <p>Field numbers:
+     * <ol>
+     *   <li>Order ID</li><li>Customer name</li><li>Phone number</li>
+     *   <li>Cake type</li><li>Quantity</li><li>Unit price</li>
+     *   <li>Pickup date</li><li>Picked up (yes/no)</li><li>Special instructions</li>
+     * </ol>
      *
      * @param orderId     the ID of the order to change
      * @param fieldNumber which field to change (1-9)
      * @param newValue    the new value exactly as the user typed it
      * @return a list of problems; an EMPTY list means the field was updated
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public List<String> updateField(int orderId, int fieldNumber, String newValue) {
         Optional<Order> found = findOrderById(orderId);
@@ -327,7 +394,7 @@ public class OrderManager {
                 edited.setPhoneNumber(value);
                 break;
             case 4: {
-                // Accept the menu number (1-4) or the cake name.
+                // Accept the cake's position in the list (1-4) or its name.
                 Optional<String> cake = validator.matchCakeChoice(value);
                 if (cake.isEmpty()) {
                     return List.of(validator.ruleFor("cakeType"));
@@ -376,7 +443,7 @@ public class OrderManager {
     }
 
     /**
-     * Gives the name of a field number used in the update menu.
+     * Gives the name of a field number used by {@link #updateField(int, int, String)}.
      *
      * @param fieldNumber 1-9
      * @return the field's name, or "Unknown field" for any other number
@@ -405,6 +472,7 @@ public class OrderManager {
      *
      * @param orderId the order number to remove
      * @return true if an order was removed, false if no order had that ID
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public boolean removeOrder(int orderId) {
         return storage().delete(orderId);
@@ -452,6 +520,7 @@ public class OrderManager {
      * @param date the pickup date to report on
      * @return the finished report (with zero orders if nothing is due)
      * @throws IllegalArgumentException if the date is null
+     * @throws DataAccessException if no database is connected yet, or the database cannot be reached
      */
     public DailyReport generateDailyReport(LocalDate date) {
         if (date == null) {

@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026 (Phase 1); updated November 13, 2026 (Phase 4)
+ * Date:    October 19, 2026 (Phase 1); updated November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   BakeryApp
  *
  * Purpose: The starting point of the Bakery Order Management System.
@@ -25,12 +25,35 @@ import javax.swing.SwingUtilities;
 import javax.swing.UIManager;
 
 /**
- * Starts the bakery program.
+ * Starts the Bakery Order Management System.
+ *
+ * <p>This is the program's entry point. {@link #main(String[])} creates a
+ * {@code BakeryApp}, and {@link #start()} wires the three layers together:
+ * <ol>
+ *   <li>an {@link OrderValidator} with the four cake types the bakery sells,</li>
+ *   <li>an {@link OrderManager} (business logic) using a 7% sales tax rate,</li>
+ *   <li>a {@link DatabaseConnector} (data layer), and</li>
+ *   <li>the {@link BakeryOrderWindow} (presentation layer), opened on the Swing thread.</li>
+ * </ol>
+ * The program starts with no database connected; the user enters their MySQL
+ * details in the window. It also installs a last-resort error handler, so an
+ * unexpected error is shown in a message box instead of closing the program.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class BakeryApp {
 
     /** Sales tax rate used for order totals and the daily report (7%). */
     private final double taxRate = 0.07;
+
+    /**
+     * Creates the application. Nothing is shown until {@link #start()} is called.
+     */
+    public BakeryApp() {
+        // nothing to set up: every field is given its value where it is declared
+    }
 
     /**
      * Program entry point: creates the app and starts it.

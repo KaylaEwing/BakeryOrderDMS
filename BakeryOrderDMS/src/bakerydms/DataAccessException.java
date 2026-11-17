@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 13, 2026 (Phase 4)
+ * Date:    November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   DataAccessException
  *
  * Purpose: Reports a database problem (no connection, wrong password,
@@ -14,7 +14,18 @@
 package bakerydms;
 
 /**
- * A database problem, with a message that is safe to show the user.
+ * Signals a database problem, with a message written for the user.
+ *
+ * <p>{@link DatabaseConnector} and {@link MySqlOrderRepository} catch every
+ * {@link java.sql.SQLException} and turn it into this exception with a
+ * plain-English message, such as "Access denied for user root. The username or
+ * password is incorrect." {@link BakeryOrderWindow} shows the message in a
+ * dialog, so a database problem never crashes the program. It is an unchecked
+ * exception so that {@link OrderRepository} methods stay simple.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 @SuppressWarnings("serial") // never saved to disk, so no version ID is needed
 public class DataAccessException extends RuntimeException {

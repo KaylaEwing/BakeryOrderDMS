@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 13, 2026 (Phase 4)
+ * Date:    November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   DatabaseConnectorTest
  *
  * Purpose: Unit tests for the database connection details. Positive tests
@@ -22,8 +22,26 @@ import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit tests for the database connection details. Positive tests prove valid
+ * details are accepted and the connection string is built by concatenation
+ * from what the user typed. Negative tests prove blank and badly formatted
+ * details are rejected with a clear message, and that a failed connection
+ * never crashes the program. These tests do not need a MySQL server.
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ */
 @DisplayName("1. Connecting to the database")
 class DatabaseConnectorTest {
+
+    /**
+     * Creates the test class. JUnit makes a new one for every test, so
+     * no test can affect another.
+     */
+    DatabaseConnectorTest() {
+        // the fields are set up in their declarations and in setUp()
+    }
 
     /** The class being tested. */
     private final DatabaseConnector connector = new DatabaseConnector();
@@ -33,6 +51,9 @@ class DatabaseConnectorTest {
 
     // ---------------- POSITIVE (affirmative) tests ----------------
 
+    /**
+     * Positive test: valid details are accepted.
+     */
     @Test
     @DisplayName("PASS: valid details are accepted")
     void validDetailsAccepted() {
@@ -43,6 +64,9 @@ class DatabaseConnectorTest {
                 "A port typed after the server address is accepted");
     }
 
+    /**
+     * Positive test: the connection string is built from the user's details.
+     */
     @Test
     @DisplayName("PASS: the connection string is built from the user's details")
     void urlIsBuiltFromUserDetails() {
@@ -53,6 +77,9 @@ class DatabaseConnectorTest {
 
     // ---------------- NEGATIVE tests ----------------
 
+    /**
+     * Negative test: blank server, database and username are each reported.
+     */
     @Test
     @DisplayName("FAIL CASE: blank server, database and username are each reported")
     void blankDetailsRejected() {
@@ -64,6 +91,9 @@ class DatabaseConnectorTest {
         assertTrue(all.contains("Username is blank"));
     }
 
+    /**
+     * Negative test: a port that is not 1-65535 is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: a port that is not 1-65535 is rejected")
     void badPortRejected() {
@@ -72,6 +102,9 @@ class DatabaseConnectorTest {
         assertFalse(connector.validate("localhost", "70000", "bakery_dms", "root", password).isEmpty());
     }
 
+    /**
+     * Negative test: a server address or database name with illegal characters is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: a server address or database name with illegal characters is rejected")
     void badNamesRejected() {
@@ -79,6 +112,9 @@ class DatabaseConnectorTest {
         assertFalse(connector.validate("localhost", "3306", "bakery;DROP", "root", password).isEmpty());
     }
 
+    /**
+     * Negative test: connecting with blank details throws a readable error, not a crash.
+     */
     @Test
     @DisplayName("FAIL CASE: connecting with blank details throws a readable error, not a crash")
     void connectWithBlankDetailsGivesMessage() {
@@ -87,6 +123,9 @@ class DatabaseConnectorTest {
         assertTrue(error.getMessage().contains("Server address is blank"), error.getMessage());
     }
 
+    /**
+     * Negative test: using the manager before connecting gives a readable error.
+     */
     @Test
     @DisplayName("FAIL CASE: using the manager before connecting gives a readable error")
     void managerBeforeConnecting() {

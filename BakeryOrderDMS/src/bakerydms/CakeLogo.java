@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    November 1, 2026 (Phase 3)
+ * Date:    November 1, 2026 (Phase 3); documented November 16, 2026 (Module 11)
  * Class:   CakeLogo
  *
  * Purpose: Draws the bakery's cake logo with Java 2D graphics. The picture
@@ -20,17 +20,37 @@ import java.awt.geom.RoundRectangle2D;
 import java.awt.image.BufferedImage;
 
 /**
- * Draws a two-tier cake with a candle.
+ * Draws the bakery's logo, a two-tier cake with a candle, using Java 2D.
+ *
+ * <p>The logo is drawn in code instead of loaded from an image file, so the
+ * program has no image files to lose. {@link BakeryOrderWindow} uses it in the
+ * header and as the window's icon.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class CakeLogo {
 
-    /** Colors used in the drawing. */
+    /** Pale pink frosting on top of each tier. */
     private final Color frosting = new Color(0xF6DFE3);
+    /** Raspberry color of the cake tiers. */
     private final Color sponge = new Color(0xA3354C);
+    /** Cream color of the cake plate. */
     private final Color plate = new Color(0xEFE6D6);
+    /** Off-white color of the candle. */
     private final Color candle = new Color(0xF8F3EA);
+    /** Gold color of the candle flame. */
     private final Color flame = new Color(0xF2B33D);
+    /** Dark brown outline around every shape. */
     private final Color outline = new Color(0x2D211B);
+
+    /**
+     * Creates a logo drawer using the bakery colors.
+     */
+    public CakeLogo() {
+        // nothing to set up: every field is given its value where it is declared
+    }
 
     /**
      * Draws the logo into a new image.

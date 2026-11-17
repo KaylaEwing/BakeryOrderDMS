@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 26, 2026 (Phase 2)
+ * Date:    October 26, 2026 (Phase 2); documented November 16, 2026 (Module 11)
  * Class:   AddOrderTest
  *
  * Purpose: Unit tests for CREATE. Positive tests prove a valid order is
@@ -21,8 +21,24 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit tests for CREATE. Positive tests prove a valid order is added and can
+ * be found with exactly the data entered. Negative tests prove every kind of
+ * bad data is rejected and the system is left unchanged.
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ */
 @DisplayName("2. Adding orders")
 class AddOrderTest {
+
+    /**
+     * Creates the test class. JUnit makes a new one for every test, so
+     * no test can affect another.
+     */
+    AddOrderTest() {
+        // the fields are set up in their declarations and in setUp()
+    }
 
     /** Creates the manager and sample data. */
     private final TestHelper helper = new TestHelper();
@@ -56,6 +72,9 @@ class AddOrderTest {
 
     // ---------------- POSITIVE (affirmative) tests ----------------
 
+    /**
+     * Positive test: a valid order is added and can be found with the same data.
+     */
     @Test
     @DisplayName("PASS: a valid order is added and can be found with the same data")
     void validOrderIsAdded() {
@@ -76,6 +95,9 @@ class AddOrderTest {
         assertEquals("Write Happy Birthday", saved.getSpecialInstructions());
     }
 
+    /**
+     * Positive test: the new order's total is $59.92 (2 x $28.00 + 7% tax).
+     */
     @Test
     @DisplayName("PASS: the new order's total is $59.92 (2 x $28.00 + 7% tax)")
     void newOrderTotalIsCorrect() {
@@ -83,6 +105,9 @@ class AddOrderTest {
         assertEquals(59.92, manager.calculateTotal(manager.findOrderById(1026).orElseThrow()), 0.001);
     }
 
+    /**
+     * Positive test: messy input is cleaned up (phone format, cake spelling, spaces).
+     */
     @Test
     @DisplayName("PASS: messy input is cleaned up (phone format, cake spelling, spaces)")
     void inputIsNormalized() {
@@ -97,6 +122,9 @@ class AddOrderTest {
         assertEquals("", saved.getSpecialInstructions());
     }
 
+    /**
+     * Positive test: an order due today is accepted.
+     */
     @Test
     @DisplayName("PASS: an order due today is accepted")
     void orderDueTodayIsAccepted() {
@@ -106,6 +134,9 @@ class AddOrderTest {
 
     // ---------------- NEGATIVE tests ----------------
 
+    /**
+     * Negative test: a duplicate order ID is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: a duplicate order ID is rejected")
     void duplicateIdIsRejected() {
@@ -117,6 +148,9 @@ class AddOrderTest {
         assertEquals("Chocolate", manager.findOrderById(1001).orElseThrow().getCakeType());
     }
 
+    /**
+     * Negative test: an order ID outside 1000-9999 is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: an order ID outside 1000-9999 is rejected")
     void badIdIsRejected() {
@@ -125,6 +159,9 @@ class AddOrderTest {
         assertEquals(6, manager.getOrderCount());
     }
 
+    /**
+     * Negative test: a blank or invalid customer name is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: a blank or invalid customer name is rejected")
     void badNameIsRejected() {
@@ -134,6 +171,9 @@ class AddOrderTest {
         assertRejected(manager.addOrder(1026, null, "407-555-9876", "Vanilla", 1, 22, pickup, ""), "Customer name");
     }
 
+    /**
+     * Negative test: a phone number without 10 digits is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: a phone number without 10 digits is rejected")
     void badPhoneIsRejected() {
@@ -141,12 +181,18 @@ class AddOrderTest {
         assertRejected(manager.addOrder(1026, "Dana Lee", "phone", "Vanilla", 1, 22, pickup, ""), "Phone");
     }
 
+    /**
+     * Negative test: a cake type the bakery doesn't sell is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: a cake type the bakery doesn't sell is rejected")
     void badCakeTypeIsRejected() {
         assertRejected(manager.addOrder(1026, "Dana Lee", "407-555-9876", "Lemon", 1, 22, pickup, ""), "Cake type");
     }
 
+    /**
+     * Negative test: quantities 0, -1 and 51 are rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: quantities 0, -1 and 51 are rejected")
     void badQuantityIsRejected() {
@@ -155,6 +201,9 @@ class AddOrderTest {
         assertRejected(manager.addOrder(1026, "Dana Lee", "407-555-9876", "Vanilla", 51, 22, pickup, ""), "Quantity");
     }
 
+    /**
+     * Negative test: prices of $0, negative, over $1000, 3 decimals or NaN are rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: prices of $0, negative, over $1000, 3 decimals or NaN are rejected")
     void badPriceIsRejected() {
@@ -165,6 +214,9 @@ class AddOrderTest {
         assertRejected(manager.addOrder(1026, "Dana Lee", "407-555-9876", "Vanilla", 1, Double.NaN, pickup, ""), "Unit price");
     }
 
+    /**
+     * Negative test: a pickup date in the past, too far ahead, or missing is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: a pickup date in the past, too far ahead, or missing is rejected")
     void badDateIsRejected() {
@@ -175,6 +227,9 @@ class AddOrderTest {
         assertRejected(manager.addOrder(1026, "Dana Lee", "407-555-9876", "Vanilla", 1, 22, null, ""), "Pickup date");
     }
 
+    /**
+     * Negative test: special instructions over 100 characters are rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: special instructions over 100 characters are rejected")
     void longInstructionsAreRejected() {
@@ -183,6 +238,9 @@ class AddOrderTest {
                 "Special instructions");
     }
 
+    /**
+     * Negative test: a missing (null) order is rejected without crashing.
+     */
     @Test
     @DisplayName("FAIL CASE: a missing (null) order is rejected without crashing")
     void nullOrderIsRejected() {

@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2)
+ * Date:    October 19, 2026 (Phase 1); updated October 26, 2026 (Phase 2); documented November 16, 2026 (Module 11)
  * Class:   OrderValidator
  *
  * Purpose: Holds every data rule for an Order in one place. Both the file
@@ -30,7 +30,31 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * Checks and cleans up Order data.
+ * Keeps every data rule in one place and cleans up what the user types.
+ *
+ * <p>Both {@link OrderManager} (before saving) and {@link BakeryOrderWindow}
+ * (to show hints and read typed values) use this class, so the program and
+ * the screen always apply the same rules. The {@code orders} table repeats
+ * the most important ones as CHECK constraints.
+ *
+ * <p>The rules:
+ * <ul>
+ *   <li>Order ID: 1000 to 9999, unique</li>
+ *   <li>Customer name: 2 to 30 letters, spaces, apostrophes, hyphens or periods</li>
+ *   <li>Phone number: exactly 10 digits, stored as 407-555-0142</li>
+ *   <li>Cake type: one the bakery sells (case is ignored)</li>
+ *   <li>Quantity: 1 to 50</li>
+ *   <li>Unit price: more than $0, at most $1000, 2 decimal places at most</li>
+ *   <li>Pickup date: a real date from today up to 2 years ahead</li>
+ *   <li>Special instructions: optional, up to 100 characters</li>
+ * </ul>
+ * The {@code parse...} methods read typed text safely: they return an empty
+ * {@link java.util.Optional} instead of throwing an exception, so bad input
+ * can never crash the program.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class OrderValidator {
 
@@ -38,14 +62,23 @@ public class OrderValidator {
     private final List<String> validCakeTypes;
 
     // Limits for each field. These are instance constants (not static) per course rules.
+    /** Smallest allowed order ID. */
     private final int minOrderId = 1000;
+    /** Largest allowed order ID. */
     private final int maxOrderId = 9999;
+    /** Fewest characters allowed in a customer name. */
     private final int minNameLength = 2;
+    /** Most characters allowed in a customer name (matches the database column). */
     private final int maxNameLength = 30;
+    /** Fewest cakes allowed in one order. */
     private final int minQuantity = 1;
+    /** Most cakes allowed in one order. */
     private final int maxQuantity = 50;
+    /** Highest price allowed for one cake, in dollars. */
     private final double maxPrice = 1000.00;
+    /** Most characters allowed in the special instructions (matches the database column). */
     private final int maxInstructionsLength = 100;
+    /** How many years ahead a pickup date may be. */
     private final int maxYearsAhead = 2;
 
     /** Accepts dates like 2027-02-13. STRICT rejects impossible dates such as 2027-02-30. */
@@ -69,7 +102,11 @@ public class OrderValidator {
         this.validCakeTypes = List.copyOf(validCakeTypes);
     }
 
-    /** @return a read-only list of the cake types the bakery sells */
+    /**
+     * Returns a read-only list of the cake types the bakery sells.
+     *
+     * @return a read-only list of the cake types the bakery sells
+     */
     public List<String> getValidCakeTypes() {
         return validCakeTypes;
     }
@@ -129,6 +166,8 @@ public class OrderValidator {
     }
 
     /**
+     * Checks a phone number.
+     *
      * @param phone the phone number to check
      * @return true if the phone number contains exactly 10 digits
      */
@@ -157,6 +196,8 @@ public class OrderValidator {
     }
 
     /**
+     * Checks whether the bakery sells a cake type.
+     *
      * @param cakeType the cake type to check
      * @return true if the bakery sells this cake type
      */
@@ -165,6 +206,8 @@ public class OrderValidator {
     }
 
     /**
+     * Checks the number of cakes in an order.
+     *
      * @param quantity the number of cakes
      * @return true if the quantity is from 1 to 50
      */
@@ -307,8 +350,8 @@ public class OrderValidator {
     }
 
     /**
-     * Turns the user's cake choice into a cake type. The user may type the
-     * menu number shown on screen (1-4) or the cake's name.
+     * Turns the user's cake choice into a cake type. The choice may be the
+     * cake's position in the list of cake types (1-4) or the cake's name.
      *
      * @param choice the number or name typed
      * @return the cake type, or an empty Optional if the choice is not valid

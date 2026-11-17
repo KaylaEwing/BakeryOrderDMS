@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 26, 2026 (Phase 2); updated November 13, 2026 (Phase 4)
+ * Date:    October 26, 2026 (Phase 2); updated November 13, 2026 (Phase 4); documented November 16, 2026 (Module 11)
  * Class:   TestHelper
  *
  * Purpose: Shared set-up code for the unit tests. It builds an OrderManager
@@ -18,7 +18,15 @@ import java.time.ZoneId;
 import java.util.List;
 
 /**
- * Builds the objects and sample data used by the unit tests.
+ * Builds the objects and sample data the unit tests share.
+ *
+ * <p>Each test gets a fresh {@link OrderManager} connected to an empty
+ * {@link InMemoryOrderRepository}, with a clock fixed at 2026-11-01, so the
+ * date rules give the same results on any day the tests are run.
+ *
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
  */
 public class TestHelper {
 
@@ -28,12 +36,27 @@ public class TestHelper {
     /** The date used for the Daily Production Report tests (a Saturday). */
     private final LocalDate reportDate = LocalDate.of(2027, 2, 13);
 
-    /** @return the fixed date the tests treat as today (2026-11-01) */
+    /**
+     * Creates a helper. Each test class keeps its own helper.
+     */
+    public TestHelper() {
+        // nothing to set up: the dates are given their values where they are declared
+    }
+
+    /**
+     * Returns the fixed date the tests treat as today (2026-11-01).
+     *
+     * @return the fixed date the tests treat as today (2026-11-01)
+     */
     public LocalDate getToday() {
         return today;
     }
 
-    /** @return the pickup date used in report tests (2027-02-13) */
+    /**
+     * Returns the pickup date used in report tests (2027-02-13).
+     *
+     * @return the pickup date used in report tests (2027-02-13)
+     */
     public LocalDate getReportDate() {
         return reportDate;
     }
@@ -86,12 +109,14 @@ public class TestHelper {
      * the sample database plus one order for the next day. Used by the update,
      * remove and report tests.
      *
+     * <pre>
      *   1001 Chocolate  x2 @ $25  2027-02-13  open
      *   1002 Vanilla    x1 @ $22  2027-02-13  open
      *   1003 Red Velvet x3 @ $28  2027-02-13  open
      *   1004 Chocolate  x1 @ $25  2027-02-13  open
      *   1005 Carrot     x2 @ $24  2027-02-13  PICKED UP (must not be counted in the report)
      *   1006 Red Velvet x1 @ $28  2027-02-14  open (different day)
+     * </pre>
      *
      * @return a manager holding the six sample orders
      */

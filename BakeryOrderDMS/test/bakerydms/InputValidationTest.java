@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 26, 2026 (Phase 2)
+ * Date:    October 26, 2026 (Phase 2); documented November 16, 2026 (Module 11)
  * Class:   InputValidationTest
  *
  * Purpose: Unit tests for the methods that turn what the user types into
@@ -20,12 +20,33 @@ import java.time.LocalDate;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit tests for the methods that turn what the user types into numbers,
+ * prices, dates and yes/no answers. These are the checks that stop a user
+ * from crashing the program with bad input, so each one is tested with good
+ * input (positive) and bad input (negative). Bad input must return "empty",
+ * never throw.
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ */
 @DisplayName("6. Input validation (user can't crash the program)")
 class InputValidationTest {
+
+    /**
+     * Creates the test class. JUnit makes a new one for every test, so
+     * no test can affect another.
+     */
+    InputValidationTest() {
+        // the fields are set up in their declarations and in setUp()
+    }
 
     /** The validator being tested. */
     private final OrderValidator validator = new TestHelper().newValidator();
 
+    /**
+     * Positive test: whole numbers are read correctly.
+     */
     @Test
     @DisplayName("PASS: whole numbers are read correctly")
     void readsWholeNumbers() {
@@ -33,6 +54,9 @@ class InputValidationTest {
         assertEquals(7, validator.parseWholeNumber("  7 ").orElseThrow());
     }
 
+    /**
+     * Negative test: words, decimals, blanks and huge numbers are not whole numbers.
+     */
     @Test
     @DisplayName("FAIL CASE: words, decimals, blanks and huge numbers are not whole numbers")
     void rejectsBadWholeNumbers() {
@@ -43,6 +67,9 @@ class InputValidationTest {
         assertTrue(validator.parseWholeNumber("99999999999").isEmpty());
     }
 
+    /**
+     * Positive test: dollar amounts are read with or without $.
+     */
     @Test
     @DisplayName("PASS: dollar amounts are read with or without $")
     void readsMoney() {
@@ -50,6 +77,9 @@ class InputValidationTest {
         assertEquals(28.5, validator.parseMoney("$28.50").orElseThrow(), 0.001);
     }
 
+    /**
+     * Negative test: NaN, Infinity, 1e3, negatives and words are not dollar amounts.
+     */
     @Test
     @DisplayName("FAIL CASE: NaN, Infinity, 1e3, negatives and words are not dollar amounts")
     void rejectsBadMoney() {
@@ -60,6 +90,9 @@ class InputValidationTest {
         assertTrue(validator.parseMoney("twenty").isEmpty());
     }
 
+    /**
+     * Positive test: dates are read in YYYY-MM-DD and MM/DD/YYYY form.
+     */
     @Test
     @DisplayName("PASS: dates are read in YYYY-MM-DD and MM/DD/YYYY form")
     void readsDates() {
@@ -67,6 +100,9 @@ class InputValidationTest {
         assertEquals(LocalDate.of(2027, 2, 13), validator.parseDate("2/13/2027").orElseThrow());
     }
 
+    /**
+     * Negative test: impossible or badly written dates are rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: impossible or badly written dates are rejected")
     void rejectsBadDates() {
@@ -76,6 +112,9 @@ class InputValidationTest {
         assertTrue(validator.parseDate("").isEmpty());
     }
 
+    /**
+     * Positive test: yes/no answers are read in any case.
+     */
     @Test
     @DisplayName("PASS: yes/no answers are read in any case")
     void readsYesNo() {
@@ -85,6 +124,9 @@ class InputValidationTest {
         assertFalse(validator.parseYesNo("false").orElseThrow());
     }
 
+    /**
+     * Negative test: anything other than yes/no is rejected.
+     */
     @Test
     @DisplayName("FAIL CASE: anything other than yes/no is rejected")
     void rejectsBadYesNo() {
@@ -92,6 +134,9 @@ class InputValidationTest {
         assertTrue(validator.parseYesNo("").isEmpty());
     }
 
+    /**
+     * Checks that PASS/FAIL: phone numbers must have exactly 10 digits.
+     */
     @Test
     @DisplayName("PASS/FAIL: phone numbers must have exactly 10 digits")
     void phoneRules() {
@@ -101,6 +146,9 @@ class InputValidationTest {
         assertTrue(validator.formatPhone("407-555-01AB").isEmpty());
     }
 
+    /**
+     * Checks that PASS/FAIL: cake choice accepts menu numbers 1-4 or names only.
+     */
     @Test
     @DisplayName("PASS/FAIL: cake choice accepts menu numbers 1-4 or names only")
     void cakeChoiceRules() {

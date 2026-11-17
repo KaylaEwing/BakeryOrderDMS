@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 26, 2026 (Phase 2)
+ * Date:    October 26, 2026 (Phase 2); documented November 16, 2026 (Module 11)
  * Class:   UpdateOrderTest
  *
  * Purpose: Unit tests for UPDATE. Every one of the 9 attributes is changed
@@ -25,8 +25,27 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit tests for UPDATE. Every one of the 9 attributes is changed using text
+ * exactly as a user would type it (positive tests), and each attribute is
+ * also given bad input to prove the change is rejected and the stored order
+ * stays the same (negative tests). Field numbers: 1 Order ID, 2 Customer
+ * name, 3 Phone, 4 Cake type, 5 Quantity, 6 Unit price, 7 Pickup date, 8
+ * Picked up, 9 Special instructions.
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ */
 @DisplayName("4. Updating orders")
 class UpdateOrderTest {
+
+    /**
+     * Creates the test class. JUnit makes a new one for every test, so
+     * no test can affect another.
+     */
+    UpdateOrderTest() {
+        // the fields are set up in their declarations and in setUp()
+    }
 
     /** Creates the manager and sample data. */
     private final TestHelper helper = new TestHelper();
@@ -72,6 +91,9 @@ class UpdateOrderTest {
 
     // ---------------- POSITIVE (affirmative) tests: every attribute ----------------
 
+    /**
+     * Positive test: 1 Order ID can be changed to an unused ID.
+     */
     @Test
     @DisplayName("PASS: 1 Order ID can be changed to an unused ID")
     void updateOrderId() {
@@ -81,18 +103,27 @@ class UpdateOrderTest {
         assertEquals(6, manager.getOrderCount(), "Changing an ID must not add or remove orders");
     }
 
+    /**
+     * Positive test: 2 Customer name can be changed.
+     */
     @Test
     @DisplayName("PASS: 2 Customer name can be changed")
     void updateName() {
         assertEquals("Mia Chen-Lopez", updateAndGet(2, "Mia Chen-Lopez").getCustomerName());
     }
 
+    /**
+     * Positive test: 3 Phone number can be changed (and is reformatted).
+     */
     @Test
     @DisplayName("PASS: 3 Phone number can be changed (and is reformatted)")
     void updatePhone() {
         assertEquals("321-555-0199", updateAndGet(3, "321.555.0199").getPhoneNumber());
     }
 
+    /**
+     * Positive test: 4 Cake type can be changed by name or menu number.
+     */
     @Test
     @DisplayName("PASS: 4 Cake type can be changed by name or menu number")
     void updateCakeType() {
@@ -100,6 +131,9 @@ class UpdateOrderTest {
         assertEquals("Carrot", updateAndGet(4, "4").getCakeType());
     }
 
+    /**
+     * Positive test: 5 Quantity can be changed, and the total follows.
+     */
     @Test
     @DisplayName("PASS: 5 Quantity can be changed, and the total follows")
     void updateQuantity() {
@@ -108,6 +142,9 @@ class UpdateOrderTest {
         assertEquals(107.00, manager.calculateTotal(after), 0.001); // 4 x $25 + 7%
     }
 
+    /**
+     * Positive test: 6 Unit price can be changed (with or without $).
+     */
     @Test
     @DisplayName("PASS: 6 Unit price can be changed (with or without $)")
     void updatePrice() {
@@ -115,6 +152,9 @@ class UpdateOrderTest {
         assertEquals(27.50, updateAndGet(6, "$27.50").getUnitPrice(), 0.001);
     }
 
+    /**
+     * Positive test: 7 Pickup date can be changed (YYYY-MM-DD or MM/DD/YYYY).
+     */
     @Test
     @DisplayName("PASS: 7 Pickup date can be changed (YYYY-MM-DD or MM/DD/YYYY)")
     void updatePickupDate() {
@@ -122,6 +162,9 @@ class UpdateOrderTest {
         assertEquals(LocalDate.of(2027, 3, 1), updateAndGet(7, "3/1/2027").getPickupDate());
     }
 
+    /**
+     * Positive test: 8 Picked up can be changed to yes and back to no.
+     */
     @Test
     @DisplayName("PASS: 8 Picked up can be changed to yes and back to no")
     void updatePickedUp() {
@@ -129,6 +172,9 @@ class UpdateOrderTest {
         assertFalse(updateAndGet(8, "No").isPickedUp());
     }
 
+    /**
+     * Positive test: 9 Special instructions can be changed and cleared.
+     */
     @Test
     @DisplayName("PASS: 9 Special instructions can be changed and cleared")
     void updateInstructions() {
@@ -136,6 +182,9 @@ class UpdateOrderTest {
         assertEquals("", updateAndGet(9, "").getSpecialInstructions());
     }
 
+    /**
+     * Positive test: updating one field leaves all other fields unchanged.
+     */
     @Test
     @DisplayName("PASS: updating one field leaves all other fields unchanged")
     void otherFieldsUnchanged() {
@@ -151,6 +200,9 @@ class UpdateOrderTest {
 
     // ---------------- NEGATIVE tests: bad input for every attribute ----------------
 
+    /**
+     * Negative test: 1 Order ID - letters, out of range, or already used.
+     */
     @Test
     @DisplayName("FAIL CASE: 1 Order ID - letters, out of range, or already used")
     void badOrderId() {
@@ -160,6 +212,9 @@ class UpdateOrderTest {
         assertUpdateRejected(1, "99999999999"); // too big for an int
     }
 
+    /**
+     * Negative test: 2 Customer name - blank, one letter, or symbols.
+     */
     @Test
     @DisplayName("FAIL CASE: 2 Customer name - blank, one letter, or symbols")
     void badName() {
@@ -168,6 +223,9 @@ class UpdateOrderTest {
         assertUpdateRejected(2, "!!");
     }
 
+    /**
+     * Negative test: 3 Phone - too short or words.
+     */
     @Test
     @DisplayName("FAIL CASE: 3 Phone - too short or words")
     void badPhone() {
@@ -175,6 +233,9 @@ class UpdateOrderTest {
         assertUpdateRejected(3, "call me");
     }
 
+    /**
+     * Negative test: 4 Cake type - not sold or menu number out of range.
+     */
     @Test
     @DisplayName("FAIL CASE: 4 Cake type - not sold or menu number out of range")
     void badCakeType() {
@@ -182,6 +243,9 @@ class UpdateOrderTest {
         assertUpdateRejected(4, "7");
     }
 
+    /**
+     * Negative test: 5 Quantity - word, decimal, 0 or 100.
+     */
     @Test
     @DisplayName("FAIL CASE: 5 Quantity - word, decimal, 0 or 100")
     void badQuantity() {
@@ -191,6 +255,9 @@ class UpdateOrderTest {
         assertUpdateRejected(5, "100");
     }
 
+    /**
+     * Negative test: 6 Unit price - word, NaN, negative, zero or 3 decimals.
+     */
     @Test
     @DisplayName("FAIL CASE: 6 Unit price - word, NaN, negative, zero or 3 decimals")
     void badPrice() {
@@ -201,6 +268,9 @@ class UpdateOrderTest {
         assertUpdateRejected(6, "28.999");
     }
 
+    /**
+     * Negative test: 7 Pickup date - not a date, impossible date, or in the past.
+     */
     @Test
     @DisplayName("FAIL CASE: 7 Pickup date - not a date, impossible date, or in the past")
     void badPickupDate() {
@@ -209,6 +279,9 @@ class UpdateOrderTest {
         assertUpdateRejected(7, "2020-01-01");
     }
 
+    /**
+     * Negative test: 8 Picked up - anything other than yes/no.
+     */
     @Test
     @DisplayName("FAIL CASE: 8 Picked up - anything other than yes/no")
     void badPickedUp() {
@@ -216,12 +289,18 @@ class UpdateOrderTest {
         assertUpdateRejected(8, "");
     }
 
+    /**
+     * Negative test: 9 Special instructions - over 100 characters.
+     */
     @Test
     @DisplayName("FAIL CASE: 9 Special instructions - over 100 characters")
     void badInstructions() {
         assertUpdateRejected(9, "x".repeat(101));
     }
 
+    /**
+     * Negative test: an order ID that doesn't exist, or field number 0 or 10.
+     */
     @Test
     @DisplayName("FAIL CASE: an order ID that doesn't exist, or field number 0 or 10")
     void badOrderOrField() {

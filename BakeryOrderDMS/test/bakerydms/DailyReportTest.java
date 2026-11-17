@@ -1,7 +1,7 @@
 /*
  * Name:    Kayla Ewing
  * Course:  CEN 3024C - Software Development I
- * Date:    October 26, 2026 (Phase 2)
+ * Date:    October 26, 2026 (Phase 2); documented November 16, 2026 (Module 11)
  * Class:   DailyReportTest
  *
  * Purpose: Unit tests for the CUSTOM ACTION, the Daily Production Report.
@@ -28,8 +28,29 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+/**
+ * Unit tests for the CUSTOM ACTION, the Daily Production Report. Positive
+ * tests check the calculation: cakes per type, number of orders, subtotal,
+ * 7% tax and expected revenue. Negative tests prove picked-up orders and
+ * other days are left out, a day with no orders reports zero, and a missing
+ * date is rejected. Expected numbers for 2027-02-13 with the sample orders:
+ * Chocolate 3 (1001 x2 + 1004 x1), Vanilla 1, Red Velvet 3, Carrot 0
+ * Subtotal = 3 x $25 + 1 x $22 + 3 x $28 = $181.00 Tax = $181.00 x 7% =
+ * $12.67 Revenue = $193.67
+ *
+ * @author Kayla Ewing
+ * @version 4.0 (Phase 4, Module 11)
+ */
 @DisplayName("5. Custom action: Daily Production Report")
 class DailyReportTest {
+
+    /**
+     * Creates the test class. JUnit makes a new one for every test, so
+     * no test can affect another.
+     */
+    DailyReportTest() {
+        // the fields are set up in their declarations and in setUp()
+    }
 
     /** Creates the manager and sample data. */
     private final TestHelper helper = new TestHelper();
@@ -49,6 +70,9 @@ class DailyReportTest {
 
     // ---------------- POSITIVE (affirmative) tests ----------------
 
+    /**
+     * Positive test: counts the cakes of each type due that day.
+     */
     @Test
     @DisplayName("PASS: counts the cakes of each type due that day")
     void countsCakesPerType() {
@@ -62,6 +86,9 @@ class DailyReportTest {
         assertEquals(4, report.getOrderCount());
     }
 
+    /**
+     * Positive test: calculates subtotal $181.00, tax $12.67, revenue $193.67.
+     */
     @Test
     @DisplayName("PASS: calculates subtotal $181.00, tax $12.67, revenue $193.67")
     void calculatesRevenue() {
@@ -72,6 +99,9 @@ class DailyReportTest {
         assertEquals(193.67, report.getExpectedRevenue(), 0.001);
     }
 
+    /**
+     * Positive test: the printed report shows the calculated totals.
+     */
     @Test
     @DisplayName("PASS: the printed report shows the calculated totals")
     void formattedReportShowsTotals() {
@@ -80,6 +110,9 @@ class DailyReportTest {
         assertTrue(text.contains("Open orders due: 4"), text);
     }
 
+    /**
+     * Positive test: the report changes when an order is updated (marked picked up).
+     */
     @Test
     @DisplayName("PASS: the report changes when an order is updated (marked picked up)")
     void reportReflectsUpdates() {
@@ -91,6 +124,9 @@ class DailyReportTest {
         assertEquals(140.17, report.getExpectedRevenue(), 0.001); // ($181 - $50) = $131 + $9.17 tax
     }
 
+    /**
+     * Positive test: the report changes when an order is added.
+     */
     @Test
     @DisplayName("PASS: the report changes when an order is added")
     void reportReflectsNewOrder() {
@@ -103,6 +139,9 @@ class DailyReportTest {
 
     // ---------------- NEGATIVE tests ----------------
 
+    /**
+     * Negative test: a picked-up order (1005, Carrot) is NOT counted.
+     */
     @Test
     @DisplayName("FAIL CASE: a picked-up order (1005, Carrot) is NOT counted")
     void pickedUpOrdersExcluded() {
@@ -111,6 +150,9 @@ class DailyReportTest {
                 "Order 1005 was already picked up and must not be baked again");
     }
 
+    /**
+     * Negative test: an order for a different day (1006) is NOT counted.
+     */
     @Test
     @DisplayName("FAIL CASE: an order for a different day (1006) is NOT counted")
     void otherDaysExcluded() {
@@ -120,6 +162,9 @@ class DailyReportTest {
         assertEquals(29.96, nextDay.getExpectedRevenue(), 0.001);
     }
 
+    /**
+     * Negative test: a day with no orders reports zero instead of crashing.
+     */
     @Test
     @DisplayName("FAIL CASE: a day with no orders reports zero instead of crashing")
     void emptyDayReportsZero() {
@@ -131,6 +176,9 @@ class DailyReportTest {
         assertTrue(report.format().contains("No open orders"));
     }
 
+    /**
+     * Negative test: a report on an empty system reports zero.
+     */
     @Test
     @DisplayName("FAIL CASE: a report on an empty system reports zero")
     void emptySystemReportsZero() {
@@ -139,6 +187,9 @@ class DailyReportTest {
         assertEquals(4, report.getCakeCounts().size(), "All four cake types are still listed");
     }
 
+    /**
+     * Negative test: a missing (null) date is rejected with an error.
+     */
     @Test
     @DisplayName("FAIL CASE: a missing (null) date is rejected with an error")
     void nullDateRejected() {
